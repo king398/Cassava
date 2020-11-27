@@ -26,9 +26,9 @@ def make_data(image_path, csv_path):
 		path = str(os.path.join(image_path, i))
 		for ix in temp1labels:
 			if ix == i:
-				print(i)
-				print()
-				print(temp1labels.get(i))
+				dictt = {path: temp1labels.get(i)}
+				labels.update(dictt)
+	print(labels)
 
 
 make_data(r"F:\Pycharm_projects\Kaggle Cassava\data\train_images",
