@@ -24,10 +24,11 @@ def make_data(image_path, csv_path):
 		temp1labels.update([temp_labels])
 	for i in tqdm(os.listdir(image_path)):
 		path = str(os.path.join(image_path, i))
-		for ix,i in temp1labels:
+		for ix in temp1labels:
 			if ix == i:
 				print(i)
 				print()
+				print(temp1labels.get(i))
 
 
 make_data(r"F:\Pycharm_projects\Kaggle Cassava\data\train_images",
