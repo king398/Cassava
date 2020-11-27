@@ -14,10 +14,10 @@ def make_data(image_path, csv_path):
 	"""
 	for i in tqdm(os.listdir(image_path)):
 		path = str(os.path.join(image_path, i))
-		new_path = str(i)
-		new_path = new_path.replace('.jpg', '')
-		print(new_path)
-	pd.read_csv()
+
+	labels_file = pd.read_csv(csv_path)
+	x = labels_file.iloc[1, 0]
+	print(x)
 
 
-make_data(r"F:\Pycharm_projects\Kaggle Cassava\data\train_images",)
+make_data(r"F:\Pycharm_projects\Kaggle Cassava\data\train_images", r"F:\Pycharm_projects\Kaggle Cassava\data\train.csv")
