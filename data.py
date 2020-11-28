@@ -8,6 +8,7 @@ from sklearn.preprocessing import minmax_scale
 import random
 import cv2
 import warnings
+import matplotlib.pyplot as plt
 
 warnings.filterwarnings('ignore')
 
@@ -31,6 +32,8 @@ samples_df = shuffle(samples_df, random_state=42)
 samples_df["label"] = samples_df["label"].astype("str")
 samples_df.head()
 temp_labels = {}
+imgg = []
+lab = []
 for i in range(len(samples_df)):
 	image_name = samples_df.iloc[i, 0]
 	image_label = samples_df.iloc[i, 1]
@@ -41,8 +44,11 @@ for im in tqdm(os.listdir(training_folder)):
 	path = os.path.join(training_folder, im)
 	label = temp_labels.get(im)
 	img = cv2.imread(path)
-	img = cv2.resize(img,d)
-	cv2.imshow("img", img)
-	cv2.waitKey(0)
-	cv2.destroyAllWindows()
-	break
+	img = tf.image.random_crop(img, size=(200, 200, 3))
+	imgg.append(img)
+	lab.append(label)
+
+lables = np.array(lab).astype(np.float32)
+img = np.array(imgg).astype(np.float32)
+train = tf.data.Dataset.from_tensor_slices((img, lables))
+print(tf.data.Dataset.cardinality(train))
