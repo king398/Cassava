@@ -50,5 +50,5 @@ for im in tqdm(os.listdir(training_folder)):
 
 lables = np.array(lab).astype(np.float32)
 img = np.array(imgg).astype(np.float32)
-train = tf.data.Dataset.from_tensor_slices((img, lables))
+train = tf.data.Dataset.from_tensor_slices((img, lables)).shuffle(buffer_size=1000)
 print(tf.data.Dataset.cardinality(train))
