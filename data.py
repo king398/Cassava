@@ -5,11 +5,9 @@ from tqdm import tqdm
 from sklearn.utils import shuffle
 import cv2
 import warnings
-
-warnings.filterwarnings('ignore')
-
 import tensorflow as tf
 
+warnings.filterwarnings('ignore')
 
 
 def make_data(training_folder, labels_file):
@@ -35,5 +33,8 @@ def make_data(training_folder, labels_file):
 		lab.append(label)
 
 	labels = np.array(lab).astype(np.float32)
-	dataset = tf.data.Dataset.from_tensor_slices((image, labels))
-	return dataset
+	np.savez_compressed('labels.npz', data=labels)
+	np.savez_compressed('img.npz', data=image)
+
+
+
