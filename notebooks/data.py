@@ -12,7 +12,9 @@ from tensorflow.keras import layers
 from tensorflow.keras.layers import Dense, Flatten, Dropout, Activation, Conv2D, MaxPool2D, Conv2DTranspose, LeakyReLU, \
 	BatchNormalization
 import cv2
-
+from tensorflow import keras
+from tensorflow.keras import layers
+from tensorflow.keras.mixed_precision import experimental as mixed_precision
 warnings.filterwarnings("ignore")
 
 samples_df = pd.read_csv(r"/content/train.csv")
@@ -47,10 +49,10 @@ images = np.array(image)
 labels = np.array(lab).astype(np.float32)
 from tensorflow.keras.layers import Dense, Flatten, Dropout, Activation, Conv2D, MaxPool2D, Conv2DTranspose, LeakyReLU
 
-from tensorflow import keras
-from tensorflow.keras import layers
-from tensorflow.keras.mixed_precision import experimental as mixed_precision
 
+
+policy = mixed_precision.Policy('mixed_float16')
+mixed_precision.set_policy(policy)
 model = Sequential()
 VGG = tf.keras.applications.VGG19(input_shape=(300, 300, 3), include_top=False, weights=None)
 Resnet = tf.keras.applications.ResNet152(input_shape=(300, 300, 3), include_top=False, weights=None, classes=5)
