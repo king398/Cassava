@@ -5,12 +5,9 @@ from tqdm import tqdm
 from sklearn.utils import shuffle
 import warnings
 import tensorflow as tf
-from PIL import Image
-from random import randrange
 from tensorflow.keras.models import Sequential
 from tensorflow.keras import layers
-from tensorflow.keras.layers import Dense, Flatten, Dropout, Activation, Conv2D, MaxPool2D, Conv2DTranspose, LeakyReLU
-import cv2
+
 from tensorflow.keras.layers import Dense, Flatten, Dropout, Activation, Conv2D, MaxPool2D, Conv2DTranspose, LeakyReLU, \
 	BatchNormalization
 from tensorflow import keras
@@ -122,11 +119,9 @@ model.add(LeakyReLU())
 model.add(Dense(8, activation="relu"))
 
 model.add(Dense(5, activation="softmax"))
-opt = tf.keras.optimizers.Adagrad(
-	learning_rate=0.01)
+opt = tf.keras.optimizers.Adagrad(learning_rate=0.01)
 model.compile(optimizer=opt,
-              loss="sparse_categorical_crossentropy"
-              ,
+              loss="sparse_categorical_crossentropy",
               metrics=['accuracy'])
 checkpoint_filepath = "./"
 model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_filepath,
