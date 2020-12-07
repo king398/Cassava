@@ -38,6 +38,8 @@ labels = np.array([(str(temp1.values()))])
 images_list = []
 labels_list = []
 for i in tqdm(os.listdir(training_folder)):
+	"""create image list and label
+	"""
 	filenamee = os.path.join(training_folder, i)
 	img = cv2.imread(filenamee)
 

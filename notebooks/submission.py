@@ -13,9 +13,11 @@ for filename in test_file_list:
 	img = cv2.imread(path + "/" + filename)
 
 	arr = tf.image.random_crop(img, size=(300, 300, 3))
+	arr = arr / 255.0
+	arr = np.array(arr).astype(np.float32)
 	arr = tf.keras.preprocessing.image.img_to_array(arr, dtype=np.float32)
-	arr = np.asarray(arr).astype(np.float32)
-	predictions.append(np.argmax(model.predict(arr)[0]))
+
+	predictions.append(np.argmax(model.predict(arr)))
 
 df = pd.DataFrame(zip(test_file_list, predictions), columns=["image_id", "label"])
 df.to_csv("./submission.csv", index=False)
