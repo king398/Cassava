@@ -42,7 +42,6 @@ for i in tqdm(os.listdir(training_folder)):
 	img = cv2.imread(filenamee)
 
 	imgg = cv2.resize(img, dsize=(300, 300), interpolation=cv2.INTER_CUBIC)
-	img = tf.image.random_brightness(img, max_delta=0.2)
 
 	label = int(temp1.get(filenamee))
 
