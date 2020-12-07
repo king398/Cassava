@@ -35,26 +35,21 @@ for im in tqdm(os.listdir(training_folder)):
 filenames = np.array([str(temp1.keys())])
 labels = np.array([(str(temp1.values()))])
 
+images_list = []
+labels_list = []
+for i in tqdm(os.listdir(training_folder)):
+	filenamee = os.path.join(training_folder, i)
+	img = cv2.imread(filenamee)
 
-def data(filename):
-	images_list = []
-	labels_list = []
-	for i in tqdm(os.listdir(filename)):
-		filenamee = os.path.join(filename, i)
-		img = cv2.imread(filenamee)
+	imgg = cv2.resize(img, dsize=(300, 300), interpolation=cv2.INTER_CUBIC)
+	img = tf.image.random_brightness(img, max_delta=0.2)
 
-		imgg = cv2.resize(img, dsize=(300, 300), interpolation=cv2.INTER_CUBIC)
-		img = tf.image.random_brightness(img, max_delta=0.2)
+	label = int(temp1.get(filenamee))
 
-		label = temp1.get(filenamee)
+	images_list.append(imgg)
+	labels_list.append(label)
+	print(i)
 
-		images_list.append(imgg)
-		labels_list.append(label)
-		print(i)
-		break
-	images = np.array(images_list)
-	labels = np.array(labels_list)
-	print(labels)
-
-
-dataa = data(r"F:\Pycharm_projects\Kaggle Cassava\data\train_images")
+images = np.array(images_list)
+labels = np.array(labels_list)
+print(labels)
