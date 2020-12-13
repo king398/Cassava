@@ -21,7 +21,8 @@ mixed_precision.set_policy(policy)
 model = Sequential()
 VGG = tf.keras.applications.VGG19(input_shape=(300, 300, 3), include_top=False, weights=None)
 Resnet = tf.keras.applications.ResNet152(input_shape=(300, 300, 3), include_top=False, weights=None, classes=5)
-Efficient_net = tf.keras.applications.EfficientNetB7(input_shape=(300, 300, 3), include_top=False)
+Efficient_net = tf.keras.applications.EfficientNetB4(input_shape=(300, 300, 3), include_top=False)
+
 
 model.add(Efficient_net)
 model.add(LeakyReLU())
@@ -54,11 +55,11 @@ model.add(LeakyReLU())
 model.add(Dense(8, activation="relu"))
 
 model.add(Dense(5, activation="softmax"))
-opt = tf.keras.optimizers.SGD(learning_rate=0.001)
+opt = tf.keras.optimizers.SGD(learning_rate=0.01)
 model.compile(optimizer=opt,
               loss="sparse_categorical_crossentropy",
               metrics=['accuracy'])
-checkpoint_filepath = "./"
+checkpoint_filepath = "/content/save_raw_model"
 log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
 model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_filepath,
