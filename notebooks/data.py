@@ -30,7 +30,7 @@ for im in tqdm(os.listdir(training_folder)):
 	pr = os.path.join(training_folder, im)
 	labelss = temp_labels.get(im)
 	xc = {pr: labelss}
-	temp1.update(xc)
+	temp1.update(xc)ds
 
 filenames = np.array([str(temp1.keys())])
 labels = np.array([(str(temp1.values()))])

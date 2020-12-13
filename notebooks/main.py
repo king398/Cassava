@@ -7,6 +7,7 @@ import warnings
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras import layers
+import datetime
 
 from tensorflow.keras.layers import Dense, Flatten, Dropout, Activation, Conv2D, MaxPool2D, Conv2DTranspose, LeakyReLU, \
 	BatchNormalization
@@ -20,7 +21,7 @@ mixed_precision.set_policy(policy)
 model = Sequential()
 VGG = tf.keras.applications.VGG19(input_shape=(300, 300, 3), include_top=False, weights=None)
 Resnet = tf.keras.applications.ResNet152(input_shape=(300, 300, 3), include_top=False, weights=None, classes=5)
-Efficient_net = tf.keras.applications.EfficientNetB5(input_shape=(300, 300, 3), include_top=False)
+Efficient_net = tf.keras.applications.EfficientNetB3(input_shape=(300, 300, 3), include_top=False)
 
 model.add(layers.experimental.preprocessing.Rescaling(1. / 255))
 
@@ -96,7 +97,9 @@ model.add(BatchNormalization())
 
 model.add(Flatten())
 model.add(LeakyReLU())
-
+model.add(Dense(512, activation="relu"))
+model.add(LeakyReLU())
+model.add(tf.keras.layers.Activation('relu'))
 model.add(Dense(256, activation="relu"))
 model.add(LeakyReLU())
 model.add(tf.keras.layers.Activation('relu'))
@@ -124,10 +127,13 @@ model.compile(optimizer=opt,
               loss="sparse_categorical_crossentropy",
               metrics=['accuracy'])
 checkpoint_filepath = "./"
+log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
 model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_filepath,
                                                                monitor='accuracy',
                                                                mode='max',
                                                                save_best_only=True)
-model.fit(images, labels, batch_size=32
-          , shuffle=True, epochs=10, callbacks=model_checkpoint_callback)
+
+model.fit(images, labels, batch_size=16
+          , shuffle=True, epochs=15, callbacks=[model_checkpoint_callback, tensorboard_callback], validation_split=0.15)
 model.save(r"/content/models", include_optimizer=True)
