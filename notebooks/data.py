@@ -4,12 +4,8 @@ import os
 from tqdm import tqdm
 from sklearn.utils import shuffle
 import warnings
-import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras import layers
-from tensorflow.keras.layers import Dense, Flatten, Dropout, Activation, Conv2D, MaxPool2D, Conv2DTranspose, LeakyReLU
 import cv2
-import matplotlib.pyplot as plt
+
 
 warnings.filterwarnings("ignore")
 
@@ -30,7 +26,7 @@ for im in tqdm(os.listdir(training_folder)):
 	pr = os.path.join(training_folder, im)
 	labelss = temp_labels.get(im)
 	xc = {pr: labelss}
-	temp1.update(xc)ds
+	temp1.update(xc)
 
 filenames = np.array([str(temp1.keys())])
 labels = np.array([(str(temp1.values()))])

@@ -1,27 +1,15 @@
-import numpy as np
-import pandas as pd
-import os
-from tqdm import tqdm
-from sklearn.utils import shuffle
-import warnings
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
-from tensorflow.keras import layers
 import datetime
-
 from tensorflow.keras.layers import Dense, Flatten, Dropout, Activation, Conv2D, MaxPool2D, Conv2DTranspose, LeakyReLU, \
 	BatchNormalization
-from tensorflow import keras
-from tensorflow.keras import layers
 from tensorflow.keras.mixed_precision import experimental as mixed_precision
 
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
 
 model = Sequential()
-VGG = tf.keras.applications.VGG19(input_shape=(300, 300, 3), include_top=False, weights=None)
-Resnet = tf.keras.applications.ResNet152(input_shape=(300, 300, 3), include_top=False, weights=None, classes=5)
-Efficient_net = tf.keras.applications.EfficientNetB5(input_shape=(300, 300, 3), include_top=False)
+Efficient_net = tf.keras.applications.EfficientNetB7(input_shape=(300, 300, 3), include_top=False)
 
 model.add(Efficient_net)
 model.add(LeakyReLU())
