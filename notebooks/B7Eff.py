@@ -21,11 +21,11 @@ mixed_precision.set_policy(policy)
 model = Sequential()
 VGG = tf.keras.applications.VGG19(input_shape=(300, 300, 3), include_top=False, weights=None)
 Resnet = tf.keras.applications.ResNet152(input_shape=(300, 300, 3), include_top=False, weights=None, classes=5)
-Efficient_net = tf.keras.applications.EfficientNetB4(input_shape=(300, 300, 3), include_top=False)
-
+Efficient_net = tf.keras.applications.EfficientNetB5(input_shape=(300, 300, 3), include_top=False)
 
 model.add(Efficient_net)
 model.add(LeakyReLU())
+model.add(Dropout(0.15))
 model.add(BatchNormalization())
 
 model.add(Flatten())
@@ -34,6 +34,7 @@ model.add(Dense(512, activation="relu"))
 model.add(LeakyReLU())
 model.add(tf.keras.layers.Activation('relu'))
 model.add(Dense(256, activation="relu"))
+model.add(Dropout(0.15))
 model.add(LeakyReLU())
 model.add(tf.keras.layers.Activation('relu'))
 model.add(LeakyReLU())
@@ -47,6 +48,7 @@ model.add(LeakyReLU())
 
 model.add(Dense(32, activation="relu"))
 model.add(LeakyReLU())
+model.add(Dropout(0.15))
 
 model.add(Dense(16, activation="relu"))
 
@@ -69,5 +71,5 @@ model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoi
 
 model.fit(images, labels, batch_size=16
           , shuffle=True, epochs=15, callbacks=[model_checkpoint_callback, tensorboard_callback], validation_split=0.15)
-model.load(checkpoint_filepath)
+model = tf.keras.models.load_model(r"/content/save_raw_model")
 model.save(r"/content/models/modelEfB7.h5", include_optimizer=True)
