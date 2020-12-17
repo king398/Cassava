@@ -8,7 +8,8 @@ import cv2
 
 
 warnings.filterwarnings("ignore")
-
+"""Reads the csv file and creates a labels of images .
+"""
 samples_df = pd.read_csv(r"/content/train.csv")
 samples_df = shuffle(samples_df, random_state=42)
 samples_df["label"] = samples_df["label"].astype("str")
@@ -29,13 +30,11 @@ for im in tqdm(os.listdir(training_folder)):
 	temp1.update(xc)
 
 filenames = np.array([str(temp1.keys())])
-labels = np.array([(str(temp1.values()))])
-
+labels = np.array([(str(temp1.values()))
 images_list = []
 labels_list = []
 for i in tqdm(os.listdir(training_folder)):
-	"""create image list and label
-	"""
+
 	filenamee = os.path.join(training_folder, i)
 	label = int(temp1.get(filenamee))
 	img = cv2.imread(filenamee)

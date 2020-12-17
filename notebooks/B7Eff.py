@@ -50,6 +50,8 @@ model.compile(optimizer=opt,
               loss="sparse_categorical_crossentropy",
               metrics=['accuracy'])
 checkpoint_filepath = "/content/save_raw_model"
+"""Fit the model to the Keras model .
+"""
 log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
 model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_filepath,
