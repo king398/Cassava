@@ -19,8 +19,6 @@ policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
 
 model = Sequential()
-VGG = tf.keras.applications.VGG19(input_shape=(300, 300, 3), include_top=False, weights=None)
-Resnet = tf.keras.applications.ResNet152(input_shape=(300, 300, 3), include_top=False, weights=None, classes=5)
 Efficient_net = tf.keras.applications.EfficientNetB2(input_shape=(300, 300, 3), include_top=False)
 
 model.add(Efficient_net)
@@ -29,32 +27,30 @@ model.add(BatchNormalization())
 
 model.add(Flatten())
 model.add(LeakyReLU())
-model.add(Dense(512, activation="relu"))
+model.add(Dense(512))
 model.add(LeakyReLU())
-model.add(tf.keras.layers.Activation('relu'))
-model.add(Dense(256, activation="relu"))
+model.add(Dense(256))
 model.add(LeakyReLU())
-model.add(tf.keras.layers.Activation('relu'))
 model.add(LeakyReLU())
 
-model.add(Dense(128, activation="relu"))
+model.add(Dense(128))
 model.add(LeakyReLU())
 
-model.add(Dense(64, activation="relu"))
+model.add(Dense(64))
 
 model.add(LeakyReLU())
 
-model.add(Dense(32, activation="relu"))
+model.add(Dense(32))
 model.add(LeakyReLU())
 
-model.add(Dense(16, activation="relu"))
+model.add(Dense(16))
 
 model.add(LeakyReLU())
 
-model.add(Dense(8, activation="relu"))
+model.add(Dense(8))
 
 model.add(Dense(5, activation="softmax"))
-opt = tf.keras.optimizers.SGD(learning_rate=0.001, nesterov=True)
+opt = tf.keras.optimizers.SGD(learning_rate=0.001)
 model.compile(optimizer=opt,
               loss="sparse_categorical_crossentropy",
               metrics=['accuracy'])
@@ -67,6 +63,6 @@ model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoi
                                                                save_best_only=True)
 
 model.fit(images, labels, batch_size=32
-          , shuffle=True, epochs=10, callbacks=[model_checkpoint_callback, tensorboard_callback], validation_split=0.15)
+          , shuffle=True, epochs=10, callbacks=[model_checkpoint_callback, tensorboard_callback], validation_split=0.2)
 model.load_weights(checkpoint_filepath)
 model.save(r"/content/models/effiecnetb2.h5", include_optimizer=True)

@@ -1,6 +1,5 @@
-tensorflow-gpu==2.4.0rc3
+tensorflow-gpu
 tqdm
 opencv-python
 numpy
 pandas
-
