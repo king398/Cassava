@@ -13,7 +13,6 @@ model = Sequential()
 
 Efficient_net = tf.keras.applications.EfficientNetB6(input_shape=(300, 300, 3), include_top=False)
 model.add(tf.keras.layers.experimental.preprocessing.Rescaling(255))
-model.add(Conv2DTranspose(filters=256, kernel_size=2, strides=1))
 model.add(Efficient_net)
 model.add(LeakyReLU())
 model.add(BatchNormalization())
@@ -30,7 +29,7 @@ model.add(Dense(16))
 model.add(Dense(8))
 
 model.add(Dense(5, activation="softmax"))
-opt = tf.keras.optimizers.SGD(learning_rate=0.05)
+opt = tf.keras.optimizers.SGD(learning_rate=0.03)
 model.compile(optimizer=opt,
               loss="sparse_categorical_crossentropy",
               metrics=['accuracy'])
