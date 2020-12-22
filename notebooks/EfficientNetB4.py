@@ -1,10 +1,18 @@
-
+import numpy as np
+import pandas as pd
+import os
+from tqdm import tqdm
+from sklearn.utils import shuffle
+import warnings
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
+from tensorflow.keras import layers
 import datetime
 
 from tensorflow.keras.layers import Dense, Flatten, Dropout, Activation, Conv2D, MaxPool2D, Conv2DTranspose, LeakyReLU, \
 	BatchNormalization
+from tensorflow import keras
+from tensorflow.keras import layers
 from tensorflow.keras.mixed_precision import experimental as mixed_precision
 
 policy = mixed_precision.Policy('mixed_float16')
@@ -42,7 +50,7 @@ model.add(LeakyReLU())
 model.add(Dense(8))
 
 model.add(Dense(5, activation="softmax"))
-opt = tf.keras.optimizers.SGD(learning_rate=0.001)
+opt = tf.keras.optimizers.SGD(learning_rate=0.01)
 model.compile(optimizer=opt,
               loss="sparse_categorical_crossentropy",
               metrics=['accuracy'])
@@ -57,4 +65,4 @@ model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoi
 model.fit(images, labels, batch_size=32
           , shuffle=True, epochs=10, callbacks=[model_checkpoint_callback, tensorboard_callback], validation_split=0.2)
 model.load_weights(checkpoint_filepath)
-model.save(r"/content/models/effiecnetb2.h5", include_optimizer=True)
+model.save(r"/content/drive/MyDrive/project/effiecnetb4.h5", include_optimizer=True)
