@@ -38,8 +38,7 @@ for im in tqdm(os.listdir(training_folder)):
 	label = temp_labels.get(im)
 	img = cv2.imread(path)
 	imgg = cv2.resize(img, dsize=(300, 300))
-	imggg = imgg / 255.0
-	image.append(imggg)
+	image.append(imgg)
 	lab.append(label)
 
 print("ok")
