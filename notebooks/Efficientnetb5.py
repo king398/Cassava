@@ -49,7 +49,7 @@ model.add(LeakyReLU())
 model.add(Dense(8))
 
 model.add(Dense(5, activation="softmax"))
-opt = tf.keras.optimizers.SGD(learning_rate=0.05)
+opt = tf.keras.optimizers.SGD(learning_rate=0.03)
 model.compile(optimizer=opt,
               loss="sparse_categorical_crossentropy",
               metrics=['accuracy'])
