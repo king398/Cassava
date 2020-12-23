@@ -1,10 +1,3 @@
-import tensorflow as tf
-from tensorflow.keras.models import Sequential
-import datetime
-
-from tensorflow.keras.layers import Dense, Flatten, LeakyReLU, \
-	BatchNormalization
-from tensorflow.keras.mixed_precision import experimental as mixed_precision
 import datetime
 
 import tensorflow as tf
@@ -12,15 +5,11 @@ from tensorflow.keras.layers import Dense, Flatten, LeakyReLU, \
 	BatchNormalization
 from tensorflow.keras.mixed_precision import experimental as mixed_precision
 from tensorflow.keras.models import Sequential
-
-policy = mixed_precision.Policy('mixed_float16')
-mixed_precision.set_policy(policy)
 
 model = Sequential()
 
-Efficient_net = tf.keras.applications.EfficientNetB5(input_shape=(300, 300, 3), include_top=False)
+Efficient_net = tf.keras.applications.EfficientNetB4(input_shape=(300, 300, 3), include_top=False)
 model.add(tf.keras.layers.experimental.preprocessing.Normalization())
-
 model.add(Efficient_net)
 model.add(LeakyReLU())
 model.add(BatchNormalization())
@@ -47,8 +36,8 @@ model.add(LeakyReLU())
 model.add(Dense(8))
 
 model.add(Dense(5, activation="softmax"))
-opt = tf.keras.optimizers.SGD(learning_rate=0.03)
-loss = tf.keras.losses.CategoricalCrossentropy(from_logits=False, label_smoothing=0.0001,
+opt = tf.keras.optimizers.SGD(learning_rate=0.03,momentum=0.01)
+loss = tf.keras.losses.CategoricalCrossentropy(from_logits=False, label_smoothing=0.01,
                                                name='categorical_crossentropy')
 model.compile(optimizer=opt, loss=loss, metrics=['categorical_accuracy'])
 checkpoint_filepath = "/content/temp"
@@ -59,7 +48,8 @@ model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoi
                                                                mode='max',
                                                                save_best_only=True)
 
-model.fit(images, labels, batch_size=32
+model.fit(images, labels, batch_size=24
           , shuffle=True, epochs=6, callbacks=[model_checkpoint_callback, tensorboard_callback], validation_split=0.2)
 model = tf.keras.models.load_model(checkpoint_filepath)
 model.save(r"/content/drive/MyDrive/project/effiecnetb4.h5", include_optimizer=True)
+tf.data.TFRecordDataset()

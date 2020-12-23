@@ -35,5 +35,8 @@ for im in tqdm(os.listdir(training_folder)):
 
 print("ok")
 images = np.array(image)
-labels = tf.one_hot(indices=np.array(lab).astype(np.float32), depth=5, dtype=tf.float32)
+temp_lab = []
+for ix in lab:
+	temp_lab.append(int(ix))
+labels = tf.one_hot(temp_lab, depth=5, dtype=tf.float16)
 print(labels)
