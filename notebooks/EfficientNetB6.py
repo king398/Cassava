@@ -21,7 +21,6 @@ policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
 Efficient_net = tf.keras.applications.EfficientNetB6(input_shape=(300, 300, 3), include_top=False)
 model.add(tf.keras.layers.experimental.preprocessing.Normalization())
-
 model.add(Efficient_net)
 model.add(LeakyReLU())
 model.add(BatchNormalization())
