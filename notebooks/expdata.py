@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from tensorflow import keras
 from functools import partial
 from sklearn.model_selection import train_test_split
+import tensorflow.keras.mixed_precision as mixed_precision
 
 print("Tensorflow version " + tf.__version__)
 AUTOTUNE = tf.data.experimental.AUTOTUNE

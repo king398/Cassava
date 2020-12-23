@@ -29,12 +29,12 @@ for im in tqdm(os.listdir(training_folder)):
 	path = os.path.join(training_folder, im)
 	label = temp_labels.get(im)
 	img = cv2.imread(path)
-	imgg = cv2.resize(img, dsize=(300, 300))
+	imgg = cv2.resize(img, dsize=(512, 512))
 	image.append(imgg)
 	lab.append(label)
 
 print("ok")
-images = np.array(image)
+images = tf.experimental.numpy.array(image)
 temp_lab = []
 for ix in lab:
 	temp_lab.append(int(ix))
