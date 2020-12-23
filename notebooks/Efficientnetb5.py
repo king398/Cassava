@@ -8,7 +8,8 @@ from tensorflow.keras.models import Sequential
 
 model = Sequential()
 
-Efficient_net = tf.keras.applications.EfficientNetB4(input_shape=(300, 300, 3), include_top=False)
+Efficient_net = tf.keras.applications.EfficientNetB4(include_top=False)
+Efficient_net.trainable = False
 model.add(tf.keras.layers.experimental.preprocessing.Normalization())
 model.add(Efficient_net)
 model.add(LeakyReLU())
@@ -36,10 +37,10 @@ model.add(LeakyReLU())
 model.add(Dense(8))
 
 model.add(Dense(5, activation="softmax"))
-opt = tf.keras.optimizers.SGD(learning_rate=0.03,momentum=0.01)
+opt = tf.keras.optimizers.SGD(learning_rate=0.03, momentum=0.01)
 loss = tf.keras.losses.CategoricalCrossentropy(from_logits=False, label_smoothing=0.01,
                                                name='categorical_crossentropy')
-model.compile(optimizer=opt, loss=loss, metrics=['categorical_accuracy'])
+model.compile(optimizer=opt, loss="sparse_categorical_crossentropy", metrics=['categorical_accuracy'])
 checkpoint_filepath = "/content/temp"
 log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
@@ -48,8 +49,7 @@ model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoi
                                                                mode='max',
                                                                save_best_only=True)
 
-model.fit(images, labels, batch_size=24
-          , shuffle=True, epochs=6, callbacks=[model_checkpoint_callback, tensorboard_callback], validation_split=0.2)
+model.fit(train_dataset, shuffle=True, epochs=6, callbacks=[model_checkpoint_callback, tensorboard_callback],
+          steps_per_epoch=STEPS_PER_EPOCH)
 model = tf.keras.models.load_model(checkpoint_filepath)
 model.save(r"/content/drive/MyDrive/project/effiecnetb4.h5", include_optimizer=True)
-tf.data.TFRecordDataset()
