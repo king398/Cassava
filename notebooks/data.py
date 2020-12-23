@@ -1,20 +1,12 @@
+import os
+import warnings
+
+import cv2
 import numpy as np
 import pandas as pd
-import os
-from tqdm import tqdm
-from sklearn.utils import shuffle
-import warnings
 import tensorflow as tf
-from PIL import Image
-from random import randrange
-from tensorflow.keras.models import Sequential
-from tensorflow.keras import layers
-from tensorflow.keras.layers import Dense, Flatten, Dropout, Activation, Conv2D, MaxPool2D, Conv2DTranspose, LeakyReLU, \
-	BatchNormalization
-import cv2
-from tensorflow import keras
-from tensorflow.keras import layers
-from tensorflow.keras.mixed_precision import experimental as mixed_precision
+from sklearn.utils import shuffle
+from tqdm import tqdm
 
 warnings.filterwarnings("ignore")
 

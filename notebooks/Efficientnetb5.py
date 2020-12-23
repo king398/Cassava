@@ -50,9 +50,7 @@ model.add(Dense(5, activation="softmax"))
 opt = tf.keras.optimizers.SGD(learning_rate=0.03)
 loss = tf.keras.losses.CategoricalCrossentropy(from_logits=False, label_smoothing=0.0001,
                                                name='categorical_crossentropy')
-model.compile(optimizer=opt,
-              loss=loss,
-              metrics=['accuracy'])
+model.compile(optimizer=opt, loss=loss, metrics=['categorical_accuracy'])
 checkpoint_filepath = "/content/temp"
 log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
