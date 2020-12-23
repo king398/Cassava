@@ -1,19 +1,17 @@
-import numpy as np
-import pandas as pd
-import os
-from tqdm import tqdm
-from sklearn.utils import shuffle
-import warnings
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
-from tensorflow.keras import layers
 import datetime
 
-from tensorflow.keras.layers import Dense, Flatten, Dropout, Activation, Conv2D, MaxPool2D, Conv2DTranspose, LeakyReLU, \
+from tensorflow.keras.layers import Dense, Flatten, Dropout, LeakyReLU, \
 	BatchNormalization
-from tensorflow import keras
-from tensorflow.keras import layers
 from tensorflow.keras.mixed_precision import experimental as mixed_precision
+import datetime
+
+import tensorflow as tf
+from tensorflow.keras.layers import Dense, Flatten, Dropout, LeakyReLU, \
+    BatchNormalization
+from tensorflow.keras.mixed_precision import experimental as mixed_precision
+from tensorflow.keras.models import Sequential
 
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
