@@ -1,57 +1,45 @@
-import datetime
-
 import tensorflow as tf
 from tensorflow.keras.layers import Dense, Flatten, LeakyReLU, \
 	BatchNormalization
-from tensorflow.keras.mixed_precision import experimental as mixed_precision
-from tensorflow.keras.models import Sequential
 
-model = Sequential()
+with strategy.scope():
+	img_adjust_layer = tf.keras.layers.Lambda(tf.keras.applications.resnet50.preprocess_input,
+	                                          input_shape=[*IMAGE_SIZE, 3])
+	base_model = tf.keras.applications.EfficientNetB5(include_top=False, weights='imagenet')
+	base_model.trainable = False
 
-policy = mixed_precision.Policy('mixed_float16')
-mixed_precision.set_policy(policy)
-Efficient_net = tf.keras.applications.EfficientNetB6(input_shape=(300, 300, 3), include_top=False)
-Efficient_net.trainable = False
-model.add(tf.keras.layers.experimental.preprocessing.Normalization())
-model.add(Efficient_net)
-model.add(LeakyReLU())
-model.add(BatchNormalization())
-model.add(Flatten())
-model.add(LeakyReLU())
-model.add(Dense(512))
-model.add(LeakyReLU())
-model.add(Dense(256))
-model.add(LeakyReLU())
+	model = tf.keras.Sequential([
+		tf.keras.layers.experimental.preprocessing.Normalization(),
+		img_adjust_layer,
+		base_model,
+		LeakyReLU(),
+		BatchNormalization(),
+		Flatten(),
+		LeakyReLU(),
+		Dense(512),
+		LeakyReLU(),
+		Dense(256),
+		LeakyReLU(),
 
-model.add(Dense(128))
-model.add(LeakyReLU())
+		Dense(128),
+		LeakyReLU(),
 
-model.add(Dense(64))
-model.add(LeakyReLU())
+		Dense(64),
+		LeakyReLU(),
 
-model.add(Dense(32))
-model.add(LeakyReLU())
+		Dense(32),
+		LeakyReLU(),
 
-model.add(Dense(16))
+		Dense(16),
+		LeakyReLU(),
 
-model.add(LeakyReLU())
+		Dense(8),
 
-model.add(Dense(8))
+		Dense(5, activation="softmax")
 
-model.add(Dense(5, activation="softmax"))
-opt = tf.keras.optimizers.SGD(learning_rate=0.03)
-loss = tf.keras.losses.CategoricalCrossentropy(from_logits=False, label_smoothing=0.0001,
-                                               name='categorical_crossentropy')
-model.compile(optimizer=opt, loss=loss, metrics=['categorical_accuracy'])
-checkpoint_filepath = "/content/temp"
-log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
-model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_filepath,
-                                                               monitor='val_accuracy',
-                                                               mode='max',
-                                                               save_best_only=True)
+	])
 
-model.fit(images, labels, batch_size=16
-          , shuffle=True, epochs=6, callbacks=[model_checkpoint_callback, tensorboard_callback], validation_split=0.2)
-model = tf.keras.models.load_model(checkpoint_filepath)
-model.save(r"/content/drive/MyDrive/project/effiecnetb4.h5", include_optimizer=True)
+	model.compile(
+		optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
+		loss='sparse_categorical_crossentropy',
+		metrics=['sparse_categorical_accuracy'])

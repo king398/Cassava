@@ -20,3 +20,17 @@ with strategy.scope():
 		optimizer=tf.keras.optimizers.Adam(learning_rate=lr_scheduler, epsilon=0.001),
 		loss='sparse_categorical_crossentropy',
 		metrics=['sparse_categorical_accuracy'])
+
+from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
+
+early = EarlyStopping(monitor='val_accuracy',
+                      mode='min',
+                      patience=5)
+STEPS_PER_EPOCH = 17118 // BATCH_SIZE
+VALID_STEPS = 4279 // BATCH_SIZE
+
+history = model.fit(train_dataset,
+                    steps_per_epoch=STEPS_PER_EPOCH,
+                    epochs=10,
+                    validation_data=valid_dataset,
+                    validation_steps=VALID_STEPS, callbacks=[early])
