@@ -9,12 +9,18 @@ tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
-datagen = ImageDataGenerator(rescale=1. / 255)
+datagen = ImageDataGenerator(rescale=1. / 255, validation_split=0.2)
 train_csv = pd.read_csv(r"F:\Pycharm_projects\Kaggle Cassava\data\train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 train = datagen.flow_from_dataframe(dataframe=train_csv,
                                     directory=r"F:\Pycharm_projects\Kaggle Cassava\data\train_images", x_col="image_id",
-                                    y_col="label", target_size=(512, 512), class_mode="categorical")
+                                    y_col="label", target_size=(512, 512), class_mode="categorical", batch_size=16,
+                                    shuffle=True, subset="training")
+validation = datagen.flow_from_dataframe(dataframe=train_csv,
+                                         directory=r"F:\Pycharm_projects\Kaggle Cassava\data\train_images",
+                                         x_col="image_id",
+                                         y_col="label", target_size=(512, 512), class_mode="categorical", batch_size=16,
+                                         shuffle=True, subset="validation")
 base_model = tf.keras.applications.EfficientNetB3(include_top=False)
 base_model.trainable = True
 
@@ -73,5 +79,5 @@ model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
 	monitor='val_categorical_accuracy',
 	mode='max',
 	save_best_only=True)
-model.fit(train, validation_split=0.2, shuffle=True, callbacks=[early, model_checkpoint_callback], epochs=10)
+model.fit(train, callbacks=[early, model_checkpoint_callback], epochs=10)
 model.load_weights(checkpoint_filepath)
