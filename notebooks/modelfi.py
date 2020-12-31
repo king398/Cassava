@@ -64,16 +64,17 @@ STEPS_PER_EPOCH = 17118 // BATCH_SIZE
 VALID_STEPS = 4279 // BATCH_SIZE
 checkpoint_filepath = '/tmp/checkpoint'
 model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
-    filepath=checkpoint_filepath,
-    save_weights_only=True,
-    monitor='val_accuracy',
-    mode='max',
-    save_best_only=True)
+	filepath=checkpoint_filepath,
+	save_weights_only=True,
+	monitor='val_accuracy',
+	mode='max',
+	save_best_only=True)
 
 history = model.fit(train_dataset,
                     steps_per_epoch=STEPS_PER_EPOCH,
 
                     epochs=25,
                     validation_data=valid_dataset,
-                    validation_steps=VALID_STEPS, callbacks=[early,model_checkpoint_callback])
+                    validation_steps=VALID_STEPS, callbacks=[early, model_checkpoint_callback])
 model.load_weights(checkpoint_filepath)
+model.evaluate(valid_dataset, steps=VALID_STEPS)

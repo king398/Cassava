@@ -27,3 +27,18 @@ df = pd.DataFrame(zip(test_file_list, predictions), columns=["image_id", "label"
 df.to_csv("./submission.csv", index=False)
 print(df)
 model = tf.keras.models.load_model(r"/content/save_raw_model")
+
+import tensorflow as tf
+import numpy as np
+import os
+import pandas as pd
+import cv2
+from collections import Counter
+from tensorflow.keras.mixed_precision import experimental as mixed_precision
+
+from tensorflow.keras.regularizers import l1
+
+model = tf.keras.models.load_weights(r"../input/model-for-training/ef.h5")
+
+model.summary()
+path = "../input/cassava-leaf-disease-classification/test_images"
