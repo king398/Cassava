@@ -1,25 +1,24 @@
 import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from tensorflow.keras.mixed_precision import experimental as mixed_precision
+import  tensorflow.keras.mixed_precision  as mixed_precision
 import pandas as pd
 from tensorflow.keras.layers import Flatten, Dense, LeakyReLU, BatchNormalization, Dropout
 
 physical_devices = tf.config.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
-policy = mixed_precision.Policy('mixed_float16')
-mixed_precision.set_policy(policy)
+
 datagen = ImageDataGenerator(rescale=1. / 255, validation_split=0.2)
 train_csv = pd.read_csv(r"F:\Pycharm_projects\Kaggle Cassava\data\train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 train = datagen.flow_from_dataframe(dataframe=train_csv,
                                     directory=r"F:\Pycharm_projects\Kaggle Cassava\data\train_images", x_col="image_id",
-                                    y_col="label", target_size=(300, 300), class_mode="categorical", batch_size=16,
+                                    y_col="label", target_size=(300, 300), class_mode="categorical", batch_size=9,
                                     shuffle=True, subset="training")
 validation = datagen.flow_from_dataframe(dataframe=train_csv,
                                          directory=r"F:\Pycharm_projects\Kaggle Cassava\data\train_images",
                                          x_col="image_id",
-                                         y_col="label", target_size=(300, 300), class_mode="categorical", batch_size=16,
+                                         y_col="label", target_size=(300, 300), class_mode="categorical", batch_size=9,
                                          shuffle=True, subset="validation")
 
 base_model = tf.keras.applications.EfficientNetB3(include_top=False)
@@ -72,7 +71,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 early = EarlyStopping(monitor='val_loss',
                       mode='min',
                       patience=5)
-checkpoint_filepath = r"F:\Pycharm_projects\Kaggle Cassava\Temp"
+checkpoint_filepath = r"F:/Pycharm_projects/Kaggle Cassava/Temp/"
 model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
 	filepath=checkpoint_filepath,
 	save_weights_only=True,
