@@ -2,7 +2,7 @@ import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.mixed_precision import experimental as mixed_precision
 import pandas as pd
-from tensorflow.keras.layers import Flatten, Dense, LeakyReLU, BatchNormalization,Dropout
+from tensorflow.keras.layers import Flatten, Dense, LeakyReLU, BatchNormalization, Dropout
 
 physical_devices = tf.config.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
@@ -14,12 +14,12 @@ train_csv = pd.read_csv(r"F:\Pycharm_projects\Kaggle Cassava\data\train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 train = datagen.flow_from_dataframe(dataframe=train_csv,
                                     directory=r"F:\Pycharm_projects\Kaggle Cassava\data\train_images", x_col="image_id",
-                                    y_col="label", target_size=(512, 512), class_mode="categorical", batch_size=8,
+                                    y_col="label", target_size=(300, 300), class_mode="categorical", batch_size=16,
                                     shuffle=True, subset="training")
 validation = datagen.flow_from_dataframe(dataframe=train_csv,
                                          directory=r"F:\Pycharm_projects\Kaggle Cassava\data\train_images",
                                          x_col="image_id",
-                                         y_col="label", target_size=(512, 512), class_mode="categorical", batch_size=8,
+                                         y_col="label", target_size=(300, 300), class_mode="categorical", batch_size=16,
                                          shuffle=True, subset="validation")
 
 base_model = tf.keras.applications.EfficientNetB3(include_top=False)
@@ -79,5 +79,5 @@ model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
 	monitor='val_categorical_accuracy',
 	mode='max',
 	save_best_only=True)
-model.fit(train, callbacks=[early, model_checkpoint_callback], epochs=10, validation_data=validation,batch_size=8)
+model.fit(train, callbacks=[early, model_checkpoint_callback], epochs=10, validation_data=validation, batch_size=16)
 model.load_weights(checkpoint_filepath)
