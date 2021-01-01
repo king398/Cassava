@@ -5,27 +5,19 @@ import pandas as pd
 from tensorflow.keras.layers import Flatten, Dense, LeakyReLU, BatchNormalization, Dropout
 from tensorflow.python.keras.utils.data_utils import Sequence
 import tensorflow_addons as tfa
+from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 
 physical_devices = tf.config.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
-datagen = ImageDataGenerator(rescale=1. / 255, validation_split=0.2, horizontal_flip=True,)
+datagen = ImageDataGenerator(rescale=1. / 255, validation_split=0.2, horizontal_flip=True)
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 
 base_model = tf.keras.applications.EfficientNetB6(include_top=False)
 base_model.trainable = True
-
-
-def Train_data():
-	train = datagen.flow_from_dataframe(dataframe=train_csv,
-	                                    directory=r"/content/train_images", x_col="image_id",
-	                                    y_col="label", target_size=(512, 512), class_mode="categorical", batch_size=16,
-	                                    subset="training", shuffle=True)
-	return train
-
 
 model = tf.keras.Sequential([
 	tf.keras.layers.Input((512, 512, 3)),
@@ -65,14 +57,13 @@ model = tf.keras.Sequential([
 	tf.keras.layers.Dense(5, activation='softmax')
 ])
 opt = tf.keras.optimizers.SGD(0.03)
-
+loss = tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.2)
 model.compile(
 	optimizer=opt,
 	loss='categorical_crossentropy',
 	metrics=['categorical_accuracy'])
-from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 
-early = EarlyStopping(monitor='val_categorical_accuracy',
+early = EarlyStopping(monitor='val_loss',
                       mode='min',
                       patience=5)
 checkpoint_filepath = r"/content/temp/"

@@ -1,65 +1,95 @@
 import tensorflow as tf
-from tensorflow.keras.models import Sequential
-import datetime
-from tensorflow.keras.layers import Dense, Flatten, Dropout, Activation, Conv2D, MaxPool2D, Conv2DTranspose, LeakyReLU, \
-	BatchNormalization
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.mixed_precision import experimental as mixed_precision
+import pandas as pd
+from tensorflow.keras.layers import Flatten, Dense, LeakyReLU, BatchNormalization, Dropout
+from tensorflow.python.keras.utils.data_utils import Sequence
+import tensorflow_addons as tfa
+
+physical_devices = tf.config.list_physical_devices('GPU')
+tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
+datagen = ImageDataGenerator(rescale=1. / 255, validation_split=0.2, horizontal_flip=True)
+train_csv = pd.read_csv(r"/content/train.csv")
+train_csv["label"] = train_csv["label"].astype(str)
 
-model = Sequential()
-Efficient_net = tf.keras.applications.EfficientNetB7(input_shape=(300, 300, 3), include_top=False)
+base_model = tf.keras.applications.EfficientNetB6(include_top=False)
+base_model.trainable = True
 
-model.add(Efficient_net)
-model.add(LeakyReLU())
-model.add(Dropout(0.15))
-model.add(BatchNormalization())
 
-model.add(Flatten())
-model.add(LeakyReLU())
-model.add(Dense(512, activation="relu"))
-model.add(LeakyReLU())
-model.add(tf.keras.layers.Activation('relu'))
-model.add(Dense(256, activation="relu"))
-model.add(Dropout(0.15))
-model.add(LeakyReLU())
-model.add(tf.keras.layers.Activation('relu'))
-model.add(LeakyReLU())
+def Train_data():
+	train = datagen.flow_from_dataframe(dataframe=train_csv,
+	                                    directory=r"/content/train_images", x_col="image_id",
+	                                    y_col="label", target_size=(512, 512), class_mode="categorical", batch_size=16,
+	                                    subset="training", shuffle=True)
+	return train
 
-model.add(Dense(128, activation="relu"))
-model.add(LeakyReLU())
 
-model.add(Dense(64, activation="relu"))
+model = tf.keras.Sequential([
+	tf.keras.layers.Input((512, 512, 3)),
+	tf.keras.layers.BatchNormalization(renorm=True),
+	base_model,
+	BatchNormalization(),
+	tf.keras.layers.LeakyReLU(),
+	tf.keras.layers.Flatten(),
+	tf.keras.layers.Dense(256),
+	BatchNormalization(),
 
-model.add(LeakyReLU())
+	tf.keras.layers.LeakyReLU(),
 
-model.add(Dense(32, activation="relu"))
-model.add(LeakyReLU())
-model.add(Dropout(0.15))
+	tf.keras.layers.Dense(128),
+	BatchNormalization(),
 
-model.add(Dense(16, activation="relu"))
+	tf.keras.layers.LeakyReLU(),
+	BatchNormalization(),
 
-model.add(LeakyReLU())
+	tf.keras.layers.Dropout(0.4),
+	BatchNormalization(),
 
-model.add(Dense(8, activation="relu"))
+	tf.keras.layers.Dense(64),
 
-model.add(Dense(5, activation="softmax"))
-opt = tf.keras.optimizers.SGD(learning_rate=0.01)
-model.compile(optimizer=opt,
-              loss="sparse_categorical_crossentropy",
-              metrics=['accuracy'])
-checkpoint_filepath = "/content/save_raw_model"
-"""Fit the model to the Keras model .
-"""
-log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
-model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_filepath,
-                                                               monitor='val_accuracy',
-                                                               mode='max',
-                                                               save_best_only=True)
+	tf.keras.layers.LeakyReLU(),
+	tf.keras.layers.Dense(32),
+	BatchNormalization(),
 
-model.fit(images, labels, batch_size=16
-          , shuffle=True, epochs=15, callbacks=[model_checkpoint_callback, tensorboard_callback], validation_split=0.15)
-model = tf.keras.models.load_model(r"/content/save_raw_model")
-model.save(r"/content/models/modelEfB7.h5", include_optimizer=True)
+	tf.keras.layers.Dropout(0.4),
+
+	tf.keras.layers.LeakyReLU(),
+	tf.keras.layers.Dense(16),
+
+	tf.keras.layers.LeakyReLU(),
+	tf.keras.layers.Dense(8),
+	tf.keras.layers.LeakyReLU(),
+	tf.keras.layers.Dense(5, activation='softmax')
+])
+opt = tf.keras.optimizers.SGD(0.03)
+
+model.compile(
+	optimizer=opt,
+	loss='categorical_crossentropy',
+	metrics=['categorical_accuracy'])
+from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
+
+early = EarlyStopping(monitor='val_loss',
+                      mode='min',
+                      patience=5)
+checkpoint_filepath = r"/content/temp/"
+model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
+	filepath=checkpoint_filepath,
+	save_weights_only=True,
+	monitor='val_categorical_accuracy',
+	mode='max',
+	save_best_only=True)
+model.fit(datagen.flow_from_dataframe(dataframe=train_csv,
+                                      directory=r"/content/train_images", x_col="image_id",
+                                      y_col="label", target_size=(512, 512), class_mode="categorical", batch_size=8,
+                                      subset="training", shuffle=True), callbacks=[early, model_checkpoint_callback],
+          epochs=10, validation_data=datagen.flow_from_dataframe(dataframe=train_csv,
+                                                                 directory=r"/content/train_images",
+                                                                 x_col="image_id",
+                                                                 y_col="label", target_size=(512, 512),
+                                                                 class_mode="categorical", batch_size=8,
+                                                                 subset="validation", shuffle=True), batch_size=8)
+model.load_weights(checkpoint_filepath)
