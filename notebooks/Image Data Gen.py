@@ -36,36 +36,32 @@ def Train_data():
 	return train
 
 
-train_ds = tf.data.Dataset.from_generator(lambda :train,
-                                          output_types=(tf.float32, tf.float32, tf.float32), output_shapes=(
-		tf.TensorShape([2, 512, 512, 3]),
-		tf.TensorShape([1, ])
-	))
 model = tf.keras.Sequential([
-	tf.keras.layers.BatchNormalization(axis=-1),
+	tf.keras.layers.Input((512, 512, 3)),
+	tf.keras.layers.BatchNormalization(renorm=True),
 	base_model,
-	BatchNormalization(axis=-1),
+	BatchNormalization(),
 	tf.keras.layers.LeakyReLU(),
-	tf.keras.layers.GlobalAveragePooling2D(),
+	tf.keras.layers.Flatten(),
 	tf.keras.layers.Dense(256),
-	BatchNormalization(axis=-1),
+	BatchNormalization(),
 
 	tf.keras.layers.LeakyReLU(),
 
 	tf.keras.layers.Dense(128),
-	BatchNormalization(axis=-1),
+	BatchNormalization(),
 
 	tf.keras.layers.LeakyReLU(),
-	BatchNormalization(axis=-1),
+	BatchNormalization(),
 
 	tf.keras.layers.Dropout(0.4),
-	BatchNormalization(axis=-1),
+	BatchNormalization(),
 
 	tf.keras.layers.Dense(64),
 
 	tf.keras.layers.LeakyReLU(),
 	tf.keras.layers.Dense(32),
-	BatchNormalization(axis=-1),
+	BatchNormalization(),
 
 	tf.keras.layers.Dropout(0.4),
 
@@ -94,6 +90,14 @@ model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
 	monitor='val_categorical_accuracy',
 	mode='max',
 	save_best_only=True)
-model.fit(train_ds, callbacks=[early, model_checkpoint_callback], epochs=2, validation_data=validation, batch_size=8,
-          )
+model.fit(datagen.flow_from_dataframe(dataframe=train_csv,
+                                      directory=r"/content/train_images", x_col="image_id",
+                                      y_col="label", target_size=(512, 512), class_mode="categorical", batch_size=16,
+                                      subset="training", shuffle=True), callbacks=[early, model_checkpoint_callback],
+          epochs=10, validation_data=datagen.flow_from_dataframe(dataframe=train_csv,
+                                                                directory=r"/content/train_images",
+                                                                x_col="image_id",
+                                                                y_col="label", target_size=(512, 512),
+                                                                class_mode="categorical", batch_size=16,
+                                                                subset="validation", shuffle=True), batch_size=16)
 model.load_weights(checkpoint_filepath)
