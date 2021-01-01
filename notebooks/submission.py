@@ -7,15 +7,10 @@ import keras
 
 
 model = keras.models.load_model(r"../input/models-gcs/85effnetb6.h5")
-
+model1 = keras.models.load_model(r"../input/models-gcs/86effnetb6.h5")
+model2 = keras.models.load_model(r"../input/models-gcs/83effnetb5no.h5")
 model.summary()
-path = "../input/cassava-leaf-disease-classification/train_images"
-
-
-
-
-
-
+path = "../input/cassava-leaf-disease-classification/test_images"
 
 test_file_list = os.listdir(path)
 predictions = []
@@ -24,8 +19,10 @@ for filename in tqdm(test_file_list):
 	arr = tf.keras.preprocessing.image.img_to_array(img)
 	arr = tf.image.flip_left_right(arr)
 	arr = tf.expand_dims(arr / 255., 0)
-	model1_predict = np.argmax(model.predict(arr))
-	pre = [model1_predict]
+	model_predict = np.argmax(model.predict(arr))
+	model1_predict = np.argmax(model1.predict(arr))
+	model2_predict = np.argmax(model.predict(arr))
+	pre = [model1_predict, model_predict, model2_predict]
 	predictions.append(int(max(set(pre), key=pre.count)))
 
 df = pd.DataFrame(zip(test_file_list, predictions), columns=["image_id", "label"])

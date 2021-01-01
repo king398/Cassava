@@ -56,7 +56,7 @@ model = tf.keras.Sequential([
 	tf.keras.layers.LeakyReLU(),
 	tf.keras.layers.Dense(5, activation='softmax')
 ])
-opt = tf.keras.optimizers.SGD(0.03,nesterov=True)
+opt = tf.keras.optimizers.SGD(0.03, nesterov=True)
 loss = tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.2)
 model.compile(
 	optimizer=opt,
