@@ -1,44 +1,102 @@
 import tensorflow as tf
-import numpy as np
-import os
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+import tensorflow.keras.mixed_precision  as mixed_precision
 import pandas as pd
-import cv2
-from collections import Counter
+from tensorflow.keras.layers import Flatten, Dense, LeakyReLU, BatchNormalization, Dropout
+from tensorflow.python.keras.utils.data_utils import Sequence
 
-model = tf.keras.models.load_model(r"../input/model-for-training/96.30acctotal.h5")
-model2 = tf.keras.models.load_model(r"../input/model-for-training/best.h5")
-model.summary()
-path = "../input/cassava-leaf-disease-classification/test_images"
-test_file_list = os.listdir(path)
-predictions = []
-for filename in test_file_list:
-	img = cv2.imread(
-		path + "/" + filename
-	)
-	imgg = cv2.resize(img, dsize=(300, 300))
-	arr = tf.keras.preprocessing.image.img_to_array(imgg)
-	arr = tf.expand_dims(arr / 255., 0)
-	model1_predict = np.argmax(model.predict(arr))
-	model2_predict = np.argmax(model2.predict(arr))
-	pre = [model1_predict, model2_predict]
-	predictions.append(int(max(set(pre), key=pre.count)))
+physical_devices = tf.config.list_physical_devices('GPU')
+tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
-df = pd.DataFrame(zip(test_file_list, predictions), columns=["image_id", "label"])
-df.to_csv("./submission.csv", index=False)
-print(df)
-model = tf.keras.models.load_model(r"/content/save_raw_model")
+policy = mixed_precision.Policy('mixed_float16')
+mixed_precision.set_global_policy(policy)
+datagen = ImageDataGenerator(rescale=1. / 255, validation_split=0.2)
+train_csv = pd.read_csv(r"/content/train.csv")
+train_csv["label"] = train_csv["label"].astype(str)
+train = datagen.flow_from_dataframe(dataframe=train_csv,
+                                    directory=r"/content/train_images", x_col="image_id",
+                                    y_col="label", target_size=(512, 512), class_mode="categorical", batch_size=16,
+                                    subset="training", shuffle=True)
+validation = datagen.flow_from_dataframe(dataframe=train_csv,
+                                         directory=r"/content/train_images",
+                                         x_col="image_id",
+                                         y_col="label", target_size=(512, 512), class_mode="categorical", batch_size=16,
+                                         subset="validation", shuffle=True)
+print(train.image_shape)
 
-import tensorflow as tf
-import numpy as np
-import os
-import pandas as pd
-import cv2
-from collections import Counter
-from tensorflow.keras.mixed_precision import experimental as mixed_precision
+base_model = tf.keras.applications.EfficientNetB3(include_top=False)
+base_model.trainable = True
 
-from tensorflow.keras.regularizers import l1
 
-model = tf.keras.models.load_weights(r"../input/model-for-training/ef.h5")
+def Train_data():
+	train = datagen.flow_from_dataframe(dataframe=train_csv,
+	                                    directory=r"/content/train_images", x_col="image_id",
+	                                    y_col="label", target_size=(512, 512), class_mode="categorical", batch_size=16,
+	                                    subset="training", shuffle=True)
+	return train
 
-model.summary()
-path = "../input/cassava-leaf-disease-classification/test_images"
+
+model = tf.keras.Sequential([
+	tf.keras.layers.BatchNormalization(renorm=True),
+	base_model,
+	BatchNormalization(),
+	tf.keras.layers.LeakyReLU(),
+	tf.keras.layers.Flatten(),
+	tf.keras.layers.Dense(256),
+	BatchNormalization(),
+
+	tf.keras.layers.LeakyReLU(),
+
+	tf.keras.layers.Dense(128),
+	BatchNormalization(),
+
+	tf.keras.layers.LeakyReLU(),
+	BatchNormalization(),
+
+	tf.keras.layers.Dropout(0.4),
+	BatchNormalization(),
+
+	tf.keras.layers.Dense(64),
+
+	tf.keras.layers.LeakyReLU(),
+	tf.keras.layers.Dense(32),
+	BatchNormalization(),
+
+	tf.keras.layers.Dropout(0.4),
+
+	tf.keras.layers.LeakyReLU(),
+	tf.keras.layers.Dense(16),
+
+	tf.keras.layers.LeakyReLU(),
+	tf.keras.layers.Dense(8),
+	tf.keras.layers.LeakyReLU(),
+	tf.keras.layers.Dense(5, activation='softmax')
+])
+
+model.compile(
+	optimizer=tf.keras.optimizers.SGD(lr=0.03),
+	loss='categorical_crossentropy',
+	metrics=['categorical_accuracy'])
+from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
+
+early = EarlyStopping(monitor='val_loss',
+                      mode='min',
+                      patience=5)
+checkpoint_filepath = r"/content/temp/"
+model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
+	filepath=checkpoint_filepath,
+	save_weights_only=True,
+	monitor='val_categorical_accuracy',
+	mode='max',
+	save_best_only=True)
+model.fit(datagen.flow_from_dataframe(dataframe=train_csv,
+                                      directory=r"/content/train_images", x_col="image_id",
+                                      y_col="label", target_size=(512, 512), class_mode="categorical", batch_size=16,
+                                      subset="training", shuffle=True), callbacks=[early, model_checkpoint_callback],
+          epochs=2, validation_data=datagen.flow_from_dataframe(dataframe=train_csv,
+                                                                directory=r"/content/train_images",
+                                                                x_col="image_id",
+                                                                y_col="label", target_size=(512, 512),
+                                                                class_mode="categorical", batch_size=16,
+                                                                subset="validation", shuffle=True), batch_size=32)
+model.load_weights(checkpoint_filepath)
