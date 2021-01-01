@@ -9,8 +9,9 @@ physical_devices = tf.config.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 policy = mixed_precision.Policy('mixed_float16')
+
 mixed_precision.set_policy(policy)
-datagen = ImageDataGenerator(rescale=1. / 255, validation_split=0.2)
+datagen = ImageDataGenerator(rescale=1. / 255, validation_split=0.2 )
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 train = datagen.flow_from_dataframe(dataframe=train_csv,
@@ -95,9 +96,9 @@ model.fit(datagen.flow_from_dataframe(dataframe=train_csv,
                                       y_col="label", target_size=(512, 512), class_mode="categorical", batch_size=12,
                                       subset="training", shuffle=True), callbacks=[early, model_checkpoint_callback],
           epochs=10, validation_data=datagen.flow_from_dataframe(dataframe=train_csv,
-                                                                directory=r"/content/train_images",
-                                                                x_col="image_id",
-                                                                y_col="label", target_size=(512, 512),
-                                                                class_mode="categorical", batch_size=12,
-                                                                subset="validation", shuffle=True), batch_size=16)
+                                                                 directory=r"/content/train_images",
+                                                                 x_col="image_id",
+                                                                 y_col="label", target_size=(512, 512),
+                                                                 class_mode="categorical", batch_size=12,
+                                                                 subset="validation", shuffle=True), batch_size=16)
 model.load_weights(checkpoint_filepath)
