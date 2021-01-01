@@ -19,11 +19,11 @@ print(tf.__version__)
 test_file_list = os.listdir(path)
 predictions = []
 for filename in test_file_list:
-	img = cv2.imread(
-		path + "/" + filename
-	)
+	img = tf.keras.preprocessing.image.load_img(path + "/" + filename, target_size=(512, 512))
 
-	model1_predict = np.argmax(model.predic)
+	arr = tf.keras.preprocessing.image.img_to_array(img)
+	arr = tf.expand_dims(arr / 255., 0)
+	model1_predict = np.argmax(model.predict(arr))
 	pre = [model1_predict]
 	predictions.append(int(max(set(pre), key=pre.count)))
 
