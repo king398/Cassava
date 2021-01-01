@@ -75,7 +75,7 @@ model = tf.keras.Sequential([
 ])
 
 model.compile(
-	optimizer=tf.keras.optimizers.SGD(lr=0.03),
+	optimizer=tf.keras.optimizers.SGD(lr=0.03, nesterov=True),
 	loss='categorical_crossentropy',
 	metrics=['categorical_accuracy'])
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
@@ -95,9 +95,9 @@ model.fit(datagen.flow_from_dataframe(dataframe=train_csv,
                                       y_col="label", target_size=(512, 512), class_mode="categorical", batch_size=16,
                                       subset="training", shuffle=True), callbacks=[early, model_checkpoint_callback],
           epochs=10, validation_data=datagen.flow_from_dataframe(dataframe=train_csv,
-                                                                directory=r"/content/train_images",
-                                                                x_col="image_id",
-                                                                y_col="label", target_size=(512, 512),
-                                                                class_mode="categorical", batch_size=16,
-                                                                subset="validation", shuffle=True), batch_size=16)
+                                                                 directory=r"/content/train_images",
+                                                                 x_col="image_id",
+                                                                 y_col="label", target_size=(512, 512),
+                                                                 class_mode="categorical", batch_size=16,
+                                                                 subset="validation", shuffle=True), batch_size=16)
 model.load_weights(checkpoint_filepath)
