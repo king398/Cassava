@@ -12,7 +12,7 @@ tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
-datagen = ImageDataGenerator(rescale=1. / 255, validation_split=0.2, horizontal_flip=True)
+datagen = ImageDataGenerator(rescale=1. / 255, validation_split=0.2, horizontal_flip=True, zoom_range=0.2)
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 
