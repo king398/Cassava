@@ -6,13 +6,25 @@ from tensorflow.keras.layers import Flatten, Dense, LeakyReLU, BatchNormalizatio
 from tensorflow.python.keras.utils.data_utils import Sequence
 import tensorflow_addons as tfa
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
+import numpy as np
 
 physical_devices = tf.config.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
-datagen = ImageDataGenerator(rescale=1. / 255, validation_split=0.2, horizontal_flip=True, zoom_range=0.2)
+
+
+def image(image):
+	img = np.array(image)
+	img = tf.image.transpose(img)
+	img = tf.image.random_flip_left_right(img)
+
+	return img
+
+
+datagen = ImageDataGenerator(rescale=1. / 255, validation_split=0.2,
+                             dtype=tf.float32, preprocessing_function=image)
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 

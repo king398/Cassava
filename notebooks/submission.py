@@ -5,24 +5,24 @@ import os
 import pandas as pd
 import keras
 
-
-model = keras.models.load_model(r"../input/models-gcs/85effnetb6.h5")
 model1 = keras.models.load_model(r"../input/models-gcs/86effnetb6.h5")
-model2 = keras.models.load_model(r"../input/models-gcs/83effnetb5no.h5")
-model.summary()
 path = "../input/cassava-leaf-disease-classification/test_images"
 
 test_file_list = os.listdir(path)
 predictions = []
+model1_predict_list = []
+tta = 5
 for filename in tqdm(test_file_list):
-	img = tf.keras.preprocessing.image.load_img(path + "/" + filename, target_size=(512, 512))
-	arr = tf.keras.preprocessing.image.img_to_array(img)
-	arr = tf.image.flip_left_right(arr)
-	arr = tf.expand_dims(arr / 255., 0)
-	model_predict = np.argmax(model.predict(arr))
-	model1_predict = np.argmax(model1.predict(arr))
-	model2_predict = np.argmax(model.predict(arr))
-	pre = [model1_predict, model_predict, model2_predict]
+	for i in range(tta):
+		img = tf.keras.preprocessing.image.load_img(path + "/" + filename, target_size=(512, 512))
+		arr = tf.keras.preprocessing.image.img_to_array(img)
+		arr = tf.image.random_flip_left_right(arr)
+		arr = tf.expand_dims(arr / 255., 0)
+		model1_predict_list.append(np.argmax(model1.predict(arr)))
+
+	model1_predict = int(max(set(model1_predict_list), key=model1_predict_list.count))
+
+	pre = [model1_predict]
 	predictions.append(int(max(set(pre), key=pre.count)))
 
 df = pd.DataFrame(zip(test_file_list, predictions), columns=["image_id", "label"])
