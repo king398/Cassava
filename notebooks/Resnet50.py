@@ -14,19 +14,12 @@ tf.config.experimental.set_memory_growth(physical_devices[0], True)
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
 
-
-def image(image):
-	img = np.array(image)
-	img = tf.image.random_flip_left_right(img)
-	return img
-
-
 datagen = ImageDataGenerator(rescale=1. / 255, validation_split=0.2,
-                             dtype=tf.float32, preprocessing_function=image)
+                             dtype=tf.float32, horizontal_flip=True)
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 
-base_model = tf.keras.applications.EfficientNetB6(include_top=False)
+base_model = tf.keras.applications.ResNet50(include_top=False)
 base_model.trainable = True
 
 model = tf.keras.Sequential([
@@ -66,7 +59,9 @@ model = tf.keras.Sequential([
 	tf.keras.layers.LeakyReLU(),
 	tf.keras.layers.Dense(5, activation='softmax')
 ])
-opt = tf.keras.optimizers.SGD(0.03, nesterov=True)
+opt = tf.keras.optimizers.SGD(0.03)
+
+
 loss = tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.2)
 model.compile(
 	optimizer=opt,
@@ -85,12 +80,12 @@ model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
 	save_best_only=True)
 model.fit(datagen.flow_from_dataframe(dataframe=train_csv,
                                       directory=r"/content/train_images", x_col="image_id",
-                                      y_col="label", target_size=(512, 512), class_mode="categorical", batch_size=8,
+                                      y_col="label", target_size=(512, 512), class_mode="categorical", batch_size=32,
                                       subset="training", shuffle=True), callbacks=[early, model_checkpoint_callback],
           epochs=10, validation_data=datagen.flow_from_dataframe(dataframe=train_csv,
                                                                  directory=r"/content/train_images",
                                                                  x_col="image_id",
                                                                  y_col="label", target_size=(512, 512),
-                                                                 class_mode="categorical", batch_size=8,
-                                                                 subset="validation", shuffle=True), batch_size=8)
+                                                                 class_mode="categorical", batch_size=32,
+                                                                 subset="validation", shuffle=True), batch_size=32)
 model.load_weights(checkpoint_filepath)

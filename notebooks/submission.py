@@ -13,14 +13,11 @@ predictions = []
 model1_predict_list = []
 tta = 5
 for filename in tqdm(test_file_list):
-	for i in range(tta):
-		img = tf.keras.preprocessing.image.load_img(path + "/" + filename, target_size=(512, 512))
-		arr = tf.keras.preprocessing.image.img_to_array(img)
-		arr = tf.image.random_flip_left_right(arr)
-		arr = tf.expand_dims(arr / 255., 0)
-		model1_predict_list.append(np.argmax(model1.predict(arr)))
-
-	model1_predict = int(max(set(model1_predict_list), key=model1_predict_list.count))
+	img = tf.keras.preprocessing.image.load_img(path + "/" + filename, target_size=(512, 512))
+	arr = tf.keras.preprocessing.image.img_to_array(img)
+	arr = tf.image.random_flip_left_right(arr)
+	arr = tf.expand_dims(arr / 255., 0)
+	model1_predict=(np.argmax(model1.predict(arr)))
 
 	pre = [model1_predict]
 	predictions.append(int(max(set(pre), key=pre.count)))
