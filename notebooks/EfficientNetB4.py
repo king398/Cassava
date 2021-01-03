@@ -1,17 +1,18 @@
+
 import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.mixed_precision import experimental as mixed_precision
 import pandas as pd
 from tensorflow.keras.layers import Flatten, Dense, LeakyReLU, BatchNormalization, Dropout
-from tensorflow.python.keras.utils.data_utils import Sequence
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
-import numpy as np
-import tensorflow_addons as tfa
+import datetime
+import os
 
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
+logdir = os.path.join("logs", datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
+tensorboard_callback = tf.keras.callbacks.TensorBoard(logdir, histogram_freq=1)
 
-4
 # import
 from keras.regularizers import l1
 
@@ -21,7 +22,7 @@ datagen = ImageDataGenerator(validation_split=0.2,
                              dtype=tf.float32, horizontal_flip=True)
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
-base_model = tf.keras.applications.EfficientNetB4(include_top=False, weights="imagenet")
+base_model = tf.keras.applications.EfficientNetB5(include_top=False, weights="imagenet")
 base_model.trainable = True
 
 model = tf.keras.Sequential([
@@ -61,7 +62,7 @@ model = tf.keras.Sequential([
 	tf.keras.layers.LeakyReLU(),
 	tf.keras.layers.Dense(5, activation='softmax')
 ])
-radam = tfa.optimizers.RectifiedAdam(0.004)
+radam = tfa.optimizers.RectifiedAdam(0.003)
 
 
 class GeneralizedCrossEntropy(tf.losses.Loss):
@@ -80,7 +81,7 @@ class GeneralizedCrossEntropy(tf.losses.Loss):
 
 loss = GeneralizedCrossEntropy
 model.compile(
-	optimizer=tfa.optimizers.Lookahead(radam, sync_period=6, slow_step_size=0.5),
+	optimizer=tf.keras.optimizers.SGD(0.03),
 	loss='categorical_crossentropy',
 	metrics=['categorical_accuracy'])
 
@@ -97,7 +98,8 @@ model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
 model.fit(datagen.flow_from_dataframe(dataframe=train_csv,
                                       directory=r"/content/train_images", x_col="image_id",
                                       y_col="label", target_size=(512, 512), class_mode="categorical", batch_size=12,
-                                      subset="training", shuffle=True), callbacks=[early, model_checkpoint_callback],
+                                      subset="training", shuffle=True),
+          callbacks=[early, model_checkpoint_callback, tensorboard_callback],
           epochs=10, validation_data=datagen.flow_from_dataframe(dataframe=train_csv,
                                                                  directory=r"/content/train_images",
                                                                  x_col="image_id",
