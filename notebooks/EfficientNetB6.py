@@ -1,4 +1,3 @@
-
 import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.mixed_precision import experimental as mixed_precision
@@ -23,7 +22,6 @@ datagen = ImageDataGenerator(validation_split=0.2,
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 base_model = tf.keras.applications.EfficientNetB6(include_top=False, weights="imagenet")
-base_model.trainable = True
 
 model = tf.keras.Sequential([
 	tf.keras.layers.Input((512, 512, 3)),
@@ -32,6 +30,11 @@ model = tf.keras.Sequential([
 	BatchNormalization(),
 	tf.keras.layers.LeakyReLU(),
 	tf.keras.layers.Flatten(),
+	tf.keras.layers.Dense(512),
+	BatchNormalization(),
+
+	tf.keras.layers.LeakyReLU(),
+
 	tf.keras.layers.Dense(256),
 	BatchNormalization(),
 
@@ -63,22 +66,7 @@ model = tf.keras.Sequential([
 	tf.keras.layers.Dense(5, activation='softmax')
 ])
 
-
-class GeneralizedCrossEntropy(tf.losses.Loss):
-	def __init__(self, eta=0.7):
-		'''
-		Paper: https://arxiv.org/abs/1805.07836
-		'''
-		super(GeneralizedCrossEntropy, self).__init__()
-		self.eta = eta
-
-	def call(self, y_true, y_pred):
-		t_loss = (1 - tf.pow(tf.reduce_sum(y_true * y_pred, axis=-1),
-		                     self.eta)) / self.eta
-		return tf.reduce_mean(t_loss)
-
-
-loss = GeneralizedCrossEntropy
+loss = tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.2)
 model.compile(
 	optimizer=tf.keras.optimizers.SGD(0.03),
 	loss='categorical_crossentropy',
