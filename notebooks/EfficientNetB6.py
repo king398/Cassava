@@ -10,8 +10,6 @@ import os
 tf.keras.regularizers.l2(l2=0.01)
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
-logdir = os.path.join("logs", datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
-tensorboard_callback = tf.keras.callbacks.TensorBoard(logdir, histogram_freq=1)
 
 datagen = ImageDataGenerator(validation_split=0.2,
                              dtype=tf.float32, horizontal_flip=True, rotation_range=0.2)
@@ -37,7 +35,7 @@ model = tf.keras.Sequential([
 	tf.keras.layers.LeakyReLU(),
 	BatchNormalization(),
 
-	tf.keras.layers.Dropout(0.3),
+	tf.keras.layers.Dropout(0.4),
 	tf.keras.layers.LeakyReLU(),
 
 	BatchNormalization(),
@@ -65,7 +63,7 @@ model = tf.keras.Sequential([
 
 loss = tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.2)
 model.compile(
-	optimizer=tf.keras.optimizers.SGD(0.04),
+	optimizer=tf.keras.optimizers.SGD(0.03),
 	loss='categorical_crossentropy',
 	metrics=['categorical_accuracy'])
 
@@ -83,7 +81,7 @@ model.fit(datagen.flow_from_dataframe(dataframe=train_csv,
                                       directory=r"/content/train_images", x_col="image_id",
                                       y_col="label", target_size=(512, 512), class_mode="categorical", batch_size=8,
                                       subset="training", shuffle=True),
-          callbacks=[early, model_checkpoint_callback, tensorboard_callback],
+          callbacks=[early, model_checkpoint_callback],
           epochs=10, validation_data=datagen.flow_from_dataframe(dataframe=train_csv,
                                                                  directory=r"/content/train_images",
                                                                  x_col="image_id",
