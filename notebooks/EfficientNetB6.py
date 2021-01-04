@@ -7,15 +7,15 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 import datetime
 import os
 
-tf.keras.regularizers.l2(l2=0.01)
+tf.keras.regularizers.l1(l1=0.01)
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
 
 datagen = ImageDataGenerator(validation_split=0.2,
-                             dtype=tf.float32, horizontal_flip=True, rotation_range=0.2)
+                             dtype=tf.float32, horizontal_flip=True)
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
-base_model = tf.keras.applications.EfficientNetB6(include_top=False, weights="imagenet", classes=5, pooling="same")
+base_model = tf.keras.applications.EfficientNetB6(include_top=False, weights="imagenet", classes=5)
 
 model = tf.keras.Sequential([
 	tf.keras.layers.Input((512, 512, 3)),
@@ -46,7 +46,7 @@ model = tf.keras.Sequential([
 	tf.keras.layers.Dense(32),
 	tf.keras.layers.LeakyReLU(),
 	BatchNormalization(),
-	tf.keras.layers.Dropout(0.3),
+	tf.keras.layers.Dropout(0.4),
 
 	tf.keras.layers.LeakyReLU(),
 	BatchNormalization(),
@@ -63,7 +63,7 @@ model = tf.keras.Sequential([
 
 loss = tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.2)
 model.compile(
-	optimizer=tf.keras.optimizers.SGD(0.03),
+	optimizer=tf.keras.optimizers.SGD(0.04),
 	loss='categorical_crossentropy',
 	metrics=['categorical_accuracy'])
 
