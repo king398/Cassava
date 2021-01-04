@@ -17,40 +17,40 @@ base_model = tf.keras.applications.ResNet101(include_top=False, weights="imagene
 
 model = tf.keras.Sequential([
 	Input((512, 512, 3)),
-	BatchNormalization(renorm=True),
+	BatchNormalization(renorm=True, trainable=False),
 	base_model,
 	Flatten(),
 	Dense(256),
 
 	LeakyReLU(),
-	BatchNormalization(),
+	BatchNormalization(trainable=False),
 
 	Dense(128),
 	LeakyReLU(),
-	BatchNormalization(),
+	BatchNormalization(trainable=False),
 
 	Dropout(0.4),
 	LeakyReLU(),
 
-	BatchNormalization(),
+	BatchNormalization(trainable=False),
 
 	Dense(64),
 	LeakyReLU(),
-	BatchNormalization(),
+	BatchNormalization(trainable=False),
 	Dense(32),
 	LeakyReLU(),
-	BatchNormalization(),
+	BatchNormalization(trainable=False),
 	Dropout(0.4),
 
 	LeakyReLU(),
-	BatchNormalization(),
+	BatchNormalization(trainable=False),
 
 	Dense(16),
 	LeakyReLU(),
-	BatchNormalization(),
+	BatchNormalization(trainable=False),
 	Dense(8),
 	LeakyReLU(),
-	BatchNormalization(),
+	BatchNormalization(trainable=False),
 
 	Dense(5, activation='softmax')
 ])
