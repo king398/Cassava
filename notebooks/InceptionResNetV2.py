@@ -28,7 +28,7 @@ model = tf.keras.Sequential([
 	Dense(128),
 	LeakyReLU(),
 	BatchNormalization(),
-
+	
 	Dropout(0.4),
 	LeakyReLU(),
 

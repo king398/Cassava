@@ -2,7 +2,7 @@ import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.mixed_precision import experimental as mixed_precision
 import pandas as pd
-from tensorflow.keras.layers import Flatten, Dense, LeakyReLU, BatchNormalization, Dropout, Input, LeakyReLU
+from tensorflow.keras.layers import Flatten, Dense, LeakyReLU, BatchNormalization, Dropout, Input
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 
 tf.keras.regularizers.l2(l2=0.01)
