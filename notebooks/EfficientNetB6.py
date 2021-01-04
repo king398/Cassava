@@ -7,68 +7,69 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 import datetime
 import os
 
+tf.keras.regularizers.l2(l2=0.01)
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
 logdir = os.path.join("logs", datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
 tensorboard_callback = tf.keras.callbacks.TensorBoard(logdir, histogram_freq=1)
 
-# import
-from keras.regularizers import l1
 
-# instantiate regularizer
+
+
 
 datagen = ImageDataGenerator(validation_split=0.2,
-                             dtype=tf.float32, horizontal_flip=True)
+                             dtype=tf.float32, horizontal_flip=True, rotation_range=0.2)
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
-base_model = tf.keras.applications.EfficientNetB6(include_top=False, weights="imagenet")
+base_model = tf.keras.applications.EfficientNetB5(include_top=False, weights="imagenet")
 
 model = tf.keras.Sequential([
 	tf.keras.layers.Input((512, 512, 3)),
 	tf.keras.layers.BatchNormalization(renorm=True),
 	base_model,
-	BatchNormalization(),
 	tf.keras.layers.LeakyReLU(),
+
+	BatchNormalization(),
+
 	tf.keras.layers.Flatten(),
-	tf.keras.layers.Dense(512),
-	BatchNormalization(),
-
-	tf.keras.layers.LeakyReLU(),
-
 	tf.keras.layers.Dense(256),
-	BatchNormalization(),
 
 	tf.keras.layers.LeakyReLU(),
+	BatchNormalization(),
 
 	tf.keras.layers.Dense(128),
-	BatchNormalization(),
-
 	tf.keras.layers.LeakyReLU(),
 	BatchNormalization(),
 
 	tf.keras.layers.Dropout(0.4),
+	tf.keras.layers.LeakyReLU(),
+
 	BatchNormalization(),
 
 	tf.keras.layers.Dense(64),
-
 	tf.keras.layers.LeakyReLU(),
-	tf.keras.layers.Dense(32),
 	BatchNormalization(),
-
+	tf.keras.layers.Dense(32),
+	tf.keras.layers.LeakyReLU(),
+	BatchNormalization(),
 	tf.keras.layers.Dropout(0.4),
 
 	tf.keras.layers.LeakyReLU(),
-	tf.keras.layers.Dense(16),
+	BatchNormalization(),
 
+	tf.keras.layers.Dense(16),
 	tf.keras.layers.LeakyReLU(),
+	BatchNormalization(),
 	tf.keras.layers.Dense(8),
 	tf.keras.layers.LeakyReLU(),
+	BatchNormalization(),
+
 	tf.keras.layers.Dense(5, activation='softmax')
 ])
 
 loss = tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.2)
 model.compile(
-	optimizer=tf.keras.optimizers.SGD(0.03),
+	optimizer=tf.keras.optimizers.SGD(0.04),
 	loss='categorical_crossentropy',
 	metrics=['categorical_accuracy'])
 

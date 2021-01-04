@@ -29,35 +29,35 @@ model = tf.keras.Sequential([
 	BatchNormalization(),
 	tf.keras.layers.LeakyReLU(),
 	tf.keras.layers.Flatten(),
-	tf.keras.layers.Dense(256),
-	BatchNormalization(),
+		tf.keras.layers.Dense(256),
+		BatchNormalization(),
 
-	tf.keras.layers.LeakyReLU(),
+		tf.keras.layers.LeakyReLU(),
 
-	tf.keras.layers.Dense(128),
-	BatchNormalization(),
+		tf.keras.layers.Dense(128),
+		BatchNormalization(),
 
-	tf.keras.layers.LeakyReLU(),
-	BatchNormalization(),
+		tf.keras.layers.LeakyReLU(),
+		BatchNormalization(),
 
-	tf.keras.layers.Dropout(0.4),
-	BatchNormalization(),
+		tf.keras.layers.Dropout(0.4),
+		BatchNormalization(),
 
-	tf.keras.layers.Dense(64),
+		tf.keras.layers.Dense(64),
 
-	tf.keras.layers.LeakyReLU(),
-	tf.keras.layers.Dense(32),
-	BatchNormalization(),
+		tf.keras.layers.LeakyReLU(),
+		tf.keras.layers.Dense(32),
+		BatchNormalization(),
 
-	tf.keras.layers.Dropout(0.4),
+		tf.keras.layers.Dropout(0.4),
 
-	tf.keras.layers.LeakyReLU(),
-	tf.keras.layers.Dense(16),
+		tf.keras.layers.LeakyReLU(),
+		tf.keras.layers.Dense(16),
 
-	tf.keras.layers.LeakyReLU(),
-	tf.keras.layers.Dense(8),
-	tf.keras.layers.LeakyReLU(),
-	tf.keras.layers.Dense(5, activation='softmax')
+		tf.keras.layers.LeakyReLU(),
+		tf.keras.layers.Dense(8),
+		tf.keras.layers.LeakyReLU(),
+		tf.keras.layers.Dense(5, activation='softmax')
 ])
 opt = tf.keras.optimizers.SGD(0.03)
 
