@@ -6,17 +6,16 @@ from tensorflow.keras.layers import Flatten, Dense, LeakyReLU, BatchNormalizatio
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 import datetime
 import os
-physical_devices = tf.config.list_physical_devices('GPU')
-tf.config.experimental.set_memory_growth(physical_devices[0], True)
-tf.keras.regularizers.l1(l1=0.01)
+
+tf.keras.regularizers.l2(l2=0.01)
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
 
 datagen = ImageDataGenerator(validation_split=0.2,
-                             dtype=tf.float32, horizontal_flip=True)
-train_csv = pd.read_csv(r"F:/Pycharm_projects/Kaggle Cassava/data/train.csv")
+                             dtype=tf.float32, horizontal_flip=True, rotation_range=0.3)
+train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
-base_model = tf.keras.applications.EfficientNetB3(include_top=False, weights="imagenet", classes=5)
+base_model = tf.keras.applications.ResNet101(include_top=False, weights="imagenet", classes=5)
 
 model = tf.keras.Sequential([
 	tf.keras.layers.Input((512, 512, 3)),
@@ -64,7 +63,7 @@ model = tf.keras.Sequential([
 
 loss = tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.2)
 model.compile(
-	optimizer=tf.keras.optimizers.SGD(0.04),
+	optimizer=tf.keras.optimizers.SGD(0.03),
 	loss='categorical_crossentropy',
 	metrics=['categorical_accuracy'])
 
@@ -78,15 +77,16 @@ model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
 	monitor='val_categorical_accuracy',
 	mode='max',
 	save_best_only=True)
-model.fit(datagen.flow_from_dataframe(dataframe=train_csv,
-                                      directory=r"F:/Pycharm_projects/Kaggle Cassava/data/train_images", x_col="image_id",
-                                      y_col="label", target_size=(512, 512), class_mode="categorical", batch_size=4,
-                                      subset="training", shuffle=True),
-          callbacks=[early, model_checkpoint_callback],
-          epochs=10, validation_data=datagen.flow_from_dataframe(dataframe=train_csv,
-                                                                 directory=r"F:/Pycharm_projects/Kaggle Cassava/data/train_images",
-                                                                 x_col="image_id",
-                                                                 y_col="label", target_size=(512, 512),
-                                                                 class_mode="categorical", batch_size=4,
-                                                                 subset="validation", shuffle=True))
+history = model.fit(datagen.flow_from_dataframe(dataframe=train_csv,
+                                                directory=r"/content/train_images", x_col="image_id",
+                                                y_col="label", target_size=(512, 512), class_mode="categorical",
+                                                batch_size=32,
+                                                subset="training", shuffle=True),
+                    callbacks=[early, model_checkpoint_callback],
+                    epochs=10, validation_data=datagen.flow_from_dataframe(dataframe=train_csv,
+                                                                           directory=r"/content/train_images",
+                                                                           x_col="image_id",
+                                                                           y_col="label", target_size=(512, 512),
+                                                                           class_mode="categorical", batch_size=32,
+                                                                           subset="validation", shuffle=True))
 model.load_weights(checkpoint_filepath)
