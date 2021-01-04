@@ -22,7 +22,7 @@ datagen = ImageDataGenerator(validation_split=0.2,
                              dtype=tf.float32, horizontal_flip=True)
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
-base_model = tf.keras.applications.EfficientNetB5(include_top=False, weights="imagenet")
+base_model = tf.keras.applications.EfficientNetB4(include_top=False, weights="imagenet")
 base_model.trainable = True
 
 model = tf.keras.Sequential([
