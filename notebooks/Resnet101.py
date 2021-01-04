@@ -13,7 +13,7 @@ datagen = ImageDataGenerator(validation_split=0.1,
                              dtype=tf.float32, horizontal_flip=True)
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
-base_model = tf.keras.applications.InceptionResNetV2(include_top=False, weights="imagenet", classes=5)
+base_model = tf.keras.applications.ResNet101(include_top=False, weights="imagenet", classes=5)
 
 model = tf.keras.Sequential([
 	Input((512, 512, 3)),
