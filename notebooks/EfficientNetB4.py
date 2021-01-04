@@ -62,7 +62,6 @@ model = tf.keras.Sequential([
 	tf.keras.layers.LeakyReLU(),
 	tf.keras.layers.Dense(5, activation='softmax')
 ])
-radam = tfa.optimizers.RectifiedAdam(0.003)
 
 
 class GeneralizedCrossEntropy(tf.losses.Loss):
