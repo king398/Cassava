@@ -13,15 +13,11 @@ mixed_precision.set_policy(policy)
 logdir = os.path.join("logs", datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
 tensorboard_callback = tf.keras.callbacks.TensorBoard(logdir, histogram_freq=1)
 
-
-
-
-
 datagen = ImageDataGenerator(validation_split=0.2,
                              dtype=tf.float32, horizontal_flip=True, rotation_range=0.2)
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
-base_model = tf.keras.applications.EfficientNetB5(include_top=False, weights="imagenet")
+base_model = tf.keras.applications.EfficientNetB6(include_top=False, weights="imagenet")
 
 model = tf.keras.Sequential([
 	tf.keras.layers.Input((512, 512, 3)),
@@ -41,7 +37,7 @@ model = tf.keras.Sequential([
 	tf.keras.layers.LeakyReLU(),
 	BatchNormalization(),
 
-	tf.keras.layers.Dropout(0.4),
+	tf.keras.layers.Dropout(0.3),
 	tf.keras.layers.LeakyReLU(),
 
 	BatchNormalization(),
@@ -52,7 +48,7 @@ model = tf.keras.Sequential([
 	tf.keras.layers.Dense(32),
 	tf.keras.layers.LeakyReLU(),
 	BatchNormalization(),
-	tf.keras.layers.Dropout(0.4),
+	tf.keras.layers.Dropout(0.3),
 
 	tf.keras.layers.LeakyReLU(),
 	BatchNormalization(),
