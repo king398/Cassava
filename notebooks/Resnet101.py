@@ -2,7 +2,7 @@ import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.mixed_precision import experimental as mixed_precision
 import pandas as pd
-from tensorflow.keras.layers import Flatten, Dense, ReLU, BatchNormalization, Dropout
+from tensorflow.keras.layers import Flatten, Dense, LeakyReLU, BatchNormalization, Dropout, Input, LeakyReLU
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 
 tf.keras.regularizers.l2(l2=0.01)
@@ -16,44 +16,40 @@ train_csv["label"] = train_csv["label"].astype(str)
 base_model = tf.keras.applications.ResNet101(include_top=False, weights="imagenet", classes=5)
 
 model = tf.keras.Sequential([
-	tf.keras.layers.Input((512, 512, 3)),
-	tf.keras.layers.BatchNormalization(renorm=True),
+	Input((512, 512, 3)),
+	BatchNormalization(renorm=True),
 	base_model,
-	ReLU(),
-
-	BatchNormalization(),
-
 	Flatten(),
 	Dense(256),
 
-	ReLU(),
+	LeakyReLU(),
 	BatchNormalization(),
 
 	Dense(128),
-	ReLU(),
+	LeakyReLU(),
 	BatchNormalization(),
 
-	Dropout(0.3),
-	ReLU(),
+	Dropout(0.4),
+	LeakyReLU(),
 
 	BatchNormalization(),
 
 	Dense(64),
-	ReLU(),
+	LeakyReLU(),
 	BatchNormalization(),
 	Dense(32),
-	ReLU(),
+	LeakyReLU(),
 	BatchNormalization(),
-	Dropout(0.3),
+	Dropout(0.4),
 
-	ReLU(),
+	LeakyReLU(),
 	BatchNormalization(),
 
 	Dense(16),
-	ReLU(),
+	LeakyReLU(),
 	BatchNormalization(),
 	Dense(8),
-	ReLU(),
+	LeakyReLU(),
 	BatchNormalization(),
 
 	Dense(5, activation='softmax')
