@@ -6,13 +6,16 @@ from tensorflow.keras.layers import Flatten, Dense, LeakyReLU, BatchNormalizatio
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 import datetime
 import os
+import numpy as np
 
 tf.keras.regularizers.l2(l2=0.01)
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
 
-datagen = ImageDataGenerator(validation_split=0.2,
-                             dtype=tf.float32, horizontal_flip=True, rotation_range=0.3)
+
+
+datagen = ImageDataGenerator(validation_split=0.1,
+                             dtype=tf.float32, horizontal_flip=True)
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 base_model = tf.keras.applications.ResNet101(include_top=False, weights="imagenet", classes=5)
