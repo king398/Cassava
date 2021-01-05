@@ -4,12 +4,20 @@ from tensorflow.keras.mixed_precision import experimental as mixed_precision
 import pandas as pd
 from tensorflow.keras.layers import Flatten, Dense, LeakyReLU, BatchNormalization, Dropout, Input
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
+import numpy as np
 
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
 
+
+def augment(image):
+	image = np.array(image)
+	image = tf.image.random_brightness(image, 0.3)
+	return image
+
+
 datagen = ImageDataGenerator(validation_split=0.2,
-                             dtype=tf.float32, horizontal_flip=True)
+                             dtype=tf.float32, horizontal_flip=True, preprocessing_function=augment)
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 base_model = tf.keras.applications.EfficientNetB5(include_top=False, weights="imagenet", classes=5)
