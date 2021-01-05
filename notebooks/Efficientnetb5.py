@@ -11,7 +11,7 @@ mixed_precision.set_policy(policy)
 
 
 def augment(image):
-	image = np.array(image)
+	image = np.array(image).astype(np.float32)
 	image = tf.image.random_brightness(image, 0.3)
 	return image
 
