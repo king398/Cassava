@@ -1,33 +1,31 @@
-# Importing all the required libraries
 import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.mixed_precision import experimental as mixed_precision
+import pandas as pd
 from tensorflow.keras.layers import Flatten, Dense, LeakyReLU, BatchNormalization, Dropout, Input
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
-import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import tensorflow_addons as tfa
 
-# regularizersto prevent overfitting by by penalizing model for it
-tf.keras.regularizers.l2(l2=0.01)
-
-# using mixed precison to improve model accuracy and speedup training process
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
 
-# ImageDataGenerator For Data Augmentation And making our Dataset
-datagen = ImageDataGenerator(validation_split=0.1,
-                             dtype=tf.float32, horizontal_flip=True)
-# reading our labels file using pandas
+
+def augment(image):
+	image = np.array(image).astype(np.float32)
+	image = tf.image.random_brightness(image, 0.4)
+	return image
+
+
+datagen = ImageDataGenerator(validation_split=0.2,
+                             dtype=tf.float32, horizontal_flip=True, preprocessing_function=augment)
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
-
-# importing the model which which we are going to use
 base_model = tf.keras.applications.EfficientNetB3(include_top=False, weights="imagenet", classes=5)
 
-# define our full model
 model = tf.keras.Sequential([
-	# defining the input dimension
 	Input((512, 512, 3)),
-
 	BatchNormalization(renorm=True, trainable=False),
 	base_model,
 	Flatten(),
@@ -37,10 +35,9 @@ model = tf.keras.Sequential([
 	BatchNormalization(trainable=False),
 
 	Dense(128),
-	# leakyRelu as activation
 	LeakyReLU(),
 	BatchNormalization(trainable=False),
-	# dropout to prevent overfitting
+
 	Dropout(0.4),
 	LeakyReLU(),
 
@@ -67,9 +64,26 @@ model = tf.keras.Sequential([
 	Dense(5, activation='softmax')
 ])
 
-loss = tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.2)
+
+class GeneralizedCrossEntropy(tf.losses.Loss):
+	def __init__(self, eta=0.7):
+		'''
+		Paper: https://arxiv.org/abs/1805.07836
+		'''
+		super(GeneralizedCrossEntropy, self).__init__()
+		self.eta = eta
+
+	def call(self, y_true, y_pred):
+		t_loss = (1 - tf.pow(tf.reduce_sum(y_true * y_pred, axis=-1),
+		                     self.eta)) / self.eta
+		return tf.reduce_mean(t_loss)
+
+
+radam = tfa.optimizers.RectifiedAdam()
+ranger = tfa.optimizers.Lookahead(radam, sync_period=6, slow_step_size=0.5)
+loss = GeneralizedCrossEntropy
 model.compile(
-	optimizer=tf.keras.optimizers.SGD(0.03),
+	optimizer=ranger,
 	loss='categorical_crossentropy',
 	metrics=['categorical_accuracy'])
 
@@ -86,13 +100,20 @@ model_checkpoint_callback = ModelCheckpoint(
 history = model.fit(datagen.flow_from_dataframe(dataframe=train_csv,
                                                 directory=r"/content/train_images", x_col="image_id",
                                                 y_col="label", target_size=(512, 512), class_mode="categorical",
-                                                batch_size=16,
+                                                batch_size=12,
                                                 subset="training", shuffle=True),
                     callbacks=[early, model_checkpoint_callback],
                     epochs=10, validation_data=datagen.flow_from_dataframe(dataframe=train_csv,
                                                                            directory=r"/content/train_images",
                                                                            x_col="image_id",
                                                                            y_col="label", target_size=(512, 512),
-                                                                           class_mode="categorical", batch_size=16,
+                                                                           class_mode="categorical", batch_size=12,
                                                                            subset="validation", shuffle=True))
 model.load_weights(checkpoint_filepath)
+plt.plot(history.history['accuracy'])
+plt.plot(history.history['val_accuracy'])
+plt.title('model accuracy')
+plt.ylabel('accuracy')
+plt.xlabel('epoch')
+plt.legend(['train', 'val'], loc='upper left')
+plt.show()

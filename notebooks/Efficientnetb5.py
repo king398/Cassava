@@ -5,6 +5,7 @@ import pandas as pd
 from tensorflow.keras.layers import Flatten, Dense, LeakyReLU, BatchNormalization, Dropout, Input
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 import numpy as np
+import matplotlib.pyplot as plt
 
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
@@ -64,8 +65,8 @@ model = tf.keras.Sequential([
 
 loss = tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.2)
 model.compile(
-	optimizer=tf.keras.optimizers.SGD(0.03),
-	loss='categorical_crossentropy',
+	optimizer=tf.keras.optimizers.SGD(0.04),
+	loss='categorical_c rossentropy',
 	metrics=['categorical_accuracy'])
 
 early = EarlyStopping(monitor='val_loss',
@@ -91,3 +92,10 @@ history = model.fit(datagen.flow_from_dataframe(dataframe=train_csv,
                                                                            class_mode="categorical", batch_size=12,
                                                                            subset="validation", shuffle=True))
 model.load_weights(checkpoint_filepath)
+plt.plot(history.history['accuracy'])
+plt.plot(history.history['val_accuracy'])
+plt.title('model accuracy')
+plt.ylabel('accuracy')
+plt.xlabel('epoch')
+plt.legend(['train', 'val'], loc='upper left')
+plt.show()
