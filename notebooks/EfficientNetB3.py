@@ -7,7 +7,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow_addons as tfa
-tf.keras.regularizers.l2(l2=0.01, **kwargs)
+tf.keras.regularizers.l2(l2=0.01)
 
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
