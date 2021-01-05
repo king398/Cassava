@@ -7,6 +7,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow_addons as tfa
+tf.keras.regularizers.l2(l2=0.01, **kwargs)
 
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
@@ -38,7 +39,6 @@ model = tf.keras.Sequential([
 	LeakyReLU(),
 	BatchNormalization(trainable=False),
 
-	Dropout(0.4),
 	LeakyReLU(),
 
 	BatchNormalization(trainable=False),
@@ -49,7 +49,6 @@ model = tf.keras.Sequential([
 	Dense(32),
 	LeakyReLU(),
 	BatchNormalization(trainable=False),
-	Dropout(0.4),
 
 	LeakyReLU(),
 	BatchNormalization(trainable=False),
