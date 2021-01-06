@@ -4,24 +4,19 @@ from tensorflow.keras.mixed_precision import experimental as mixed_precision
 import pandas as pd
 from tensorflow.keras.layers import Flatten, Dense, LeakyReLU, BatchNormalization, Dropout, Input
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
-import numpy as np
-import matplotlib.pyplot as plt
+import tensorflow_addons as tfa
+import efficientnet.keras as efn
 
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
 
-
-def augment(image):
-	image = np.array(image).astype(np.float32)
-	image = tf.image.random_brightness(image, 0.3)
-	return image
-
-
 datagen = ImageDataGenerator(validation_split=0.2,
-                             dtype=tf.float32, horizontal_flip=True, preprocessing_function=augment)
+
+                             horizontal_flip=True, rescale=1. / 255)
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
-base_model = tf.keras.applications.EfficientNetB5(include_top=False, weights="imagenet", classes=5)
+base_model = efn.EfficientNetB0(weights='noisy-student', include_top=False)
+base_model.trainable = True
 
 model = tf.keras.Sequential([
 	Input((512, 512, 3)),
@@ -37,7 +32,6 @@ model = tf.keras.Sequential([
 	LeakyReLU(),
 	BatchNormalization(trainable=False),
 
-	Dropout(0.4),
 	LeakyReLU(),
 
 	BatchNormalization(trainable=False),
@@ -48,7 +42,6 @@ model = tf.keras.Sequential([
 	Dense(32),
 	LeakyReLU(),
 	BatchNormalization(trainable=False),
-	Dropout(0.4),
 
 	LeakyReLU(),
 	BatchNormalization(trainable=False),
@@ -62,11 +55,12 @@ model = tf.keras.Sequential([
 
 	Dense(5, activation='softmax')
 ])
-
-loss = tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.2)
+radam = tfa.optimizers.RectifiedAdam()
+ranger = tfa.optimizers.Lookahead(radam, sync_period=6, slow_step_size=0.5)
+loss = tf.keras.losses.CategoricalCrossentropy()
 model.compile(
-	optimizer=tf.keras.optimizers.SGD(0.04),
-	loss='categorical_c rossentropy',
+	optimizer=ranger,
+	loss=loss,
 	metrics=['categorical_accuracy'])
 
 early = EarlyStopping(monitor='val_loss',
@@ -81,21 +75,14 @@ model_checkpoint_callback = ModelCheckpoint(
 	save_best_only=True)
 history = model.fit(datagen.flow_from_dataframe(dataframe=train_csv,
                                                 directory=r"/content/train_images", x_col="image_id",
-                                                y_col="label", target_size=(512, 512), class_mode="categorical",
-                                                batch_size=12,
+                                                y_col="label", target_size=(512, 512),
+                                                batch_size=8,
                                                 subset="training", shuffle=True),
                     callbacks=[early, model_checkpoint_callback],
                     epochs=10, validation_data=datagen.flow_from_dataframe(dataframe=train_csv,
                                                                            directory=r"/content/train_images",
                                                                            x_col="image_id",
                                                                            y_col="label", target_size=(512, 512),
-                                                                           class_mode="categorical", batch_size=12,
+                                                                           batch_size=8,
                                                                            subset="validation", shuffle=True))
 model.load_weights(checkpoint_filepath)
-plt.plot(history.history['accuracy'])
-plt.plot(history.history['val_accuracy'])
-plt.title('model accuracy')
-plt.ylabel('accuracy')
-plt.xlabel('epoch')
-plt.legend(['train', 'val'], loc='upper left')
-plt.show()
