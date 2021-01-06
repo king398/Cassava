@@ -81,7 +81,7 @@ class GeneralizedCrossEntropy(tf.losses.Loss):
 loss = GeneralizedCrossEntropy
 model.compile(
 	optimizer=tf.keras.optimizers.SGD(0.03),
-	loss='categorical_crossentropy',
+	loss=loss,
 	metrics=['categorical_accuracy'])
 
 early = EarlyStopping(monitor='val_loss',
