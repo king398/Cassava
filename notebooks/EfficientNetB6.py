@@ -14,13 +14,13 @@ mixed_precision.set_policy(policy)
 
 
 def augment(image):
-	image = np.array(image).astype(np.float32)
+	image = np.array(image)
 	image = tf.image.random_brightness(image, 0.3)
 	return image
 
 
 datagen = ImageDataGenerator(validation_split=0.2,
-                             dtype=tf.float32, horizontal_flip=True, preprocessing_function=augment)
+                             horizontal_flip=True, preprocessing_function=augment)
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 base_model = efn.EfficientNetB6(include_top=False, weights="noisy-student")
