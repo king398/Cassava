@@ -5,19 +5,21 @@ import os
 import pandas as pd
 import keras
 
-model1 = keras.models.load_model(r"../input/models-gcs/86effnetb6.h5")
+
+model1 = tf.keras.models.load_model(r"../input/models-gcs/87effnetb3.h5", compile=True)
 path = "../input/cassava-leaf-disease-classification/test_images"
 
 test_file_list = os.listdir(path)
 predictions = []
 model1_predict_list = []
-tta = 5
 for filename in tqdm(test_file_list):
 	img = tf.keras.preprocessing.image.load_img(path + "/" + filename, target_size=(512, 512))
 	arr = tf.keras.preprocessing.image.img_to_array(img)
 	arr = tf.image.random_flip_left_right(arr)
+	arr = tf.image.random_flip_up_down(arr)
+	arr = tf.image.random_brightness(arr, 0.3)
 	arr = tf.expand_dims(arr / 255., 0)
-	model1_predict=(np.argmax(model1.predict(arr)))
+	model1_predict = (np.argmax(model1.predict(arr)))
 
 	pre = [model1_predict]
 	predictions.append(int(max(set(pre), key=pre.count)))
