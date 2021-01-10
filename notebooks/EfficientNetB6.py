@@ -3,7 +3,7 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.mixed_precision import experimental as mixed_precision
 import pandas as pd
 from tensorflow.keras.layers import Flatten, Dense, LeakyReLU, BatchNormalization, Dropout
-from tensorflow.python.keras.utils.data_utils import Sequence
+from tensorflow.keras.callbacks import ReduceLROnPlateau
 import tensorflow_addons as tfa
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 
@@ -16,6 +16,9 @@ train_csv["label"] = train_csv["label"].astype(str)
 
 base_model = tf.keras.applications.EfficientNetB6(include_top=False)
 base_model.trainable = True
+
+radam = tfa.optimizers.RectifiedAdam()
+ranger = tfa.optimizers.Lookahead(radam, sync_period=6, slow_step_size=0.5)
 
 
 def log_t(u, t):
@@ -121,40 +124,51 @@ model = tf.keras.Sequential([
 	tf.keras.layers.Input((512, 512, 3)),
 	tf.keras.layers.BatchNormalization(renorm=True),
 	base_model,
-	BatchNormalization(),
 	tf.keras.layers.LeakyReLU(),
+	BatchNormalization(trainable=False),
 	tf.keras.layers.Flatten(),
 	tf.keras.layers.Dense(256),
-	BatchNormalization(),
-
 	tf.keras.layers.LeakyReLU(),
+	BatchNormalization(trainable=False),
 
 	tf.keras.layers.Dense(128),
-	BatchNormalization(),
+	tf.keras.layers.LeakyReLU(),
+
+	BatchNormalization(trainable=False),
 
 	tf.keras.layers.LeakyReLU(),
-	BatchNormalization(),
 
 	tf.keras.layers.Dropout(0.4),
-	BatchNormalization(),
+	tf.keras.layers.LeakyReLU(),
+
+	BatchNormalization(trainable=False),
 
 	tf.keras.layers.Dense(64),
 
 	tf.keras.layers.LeakyReLU(),
+	BatchNormalization(trainable=False),
+
 	tf.keras.layers.Dense(32),
-	BatchNormalization(),
+	tf.keras.layers.LeakyReLU(),
+
+	BatchNormalization(trainable=False),
 
 	tf.keras.layers.Dropout(0.4),
 
 	tf.keras.layers.LeakyReLU(),
-	tf.keras.layers.Dense(16),
+	BatchNormalization(trainable=False),
 
+	tf.keras.layers.Dense(16),
 	tf.keras.layers.LeakyReLU(),
+	BatchNormalization(trainable=False),
 	tf.keras.layers.Dense(8),
 	tf.keras.layers.LeakyReLU(),
+	BatchNormalization(trainable=False),
 	tf.keras.layers.Dense(5, activation='softmax')
 ])
-opt = tf.keras.optimizers.SGD(0.03)
+opt = tf.keras.optimizers.RMSprop(learning_rate=0.1)
+reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2,
+                              patience=3, min_lr=0.001)
 model.compile(
 	optimizer=opt,
 	loss=BiTemperedLogisticLoss(t1=0, t2=1.0),
@@ -173,7 +187,8 @@ model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
 model.fit(datagen.flow_from_dataframe(dataframe=train_csv,
                                       directory=r"/content/train_images", x_col="image_id",
                                       y_col="label", target_size=(512, 512), class_mode="categorical", batch_size=8,
-                                      subset="training", shuffle=True), callbacks=[early, model_checkpoint_callback],
+                                      subset="training", shuffle=True),
+          callbacks=[early, model_checkpoint_callback, reduce_lr],
           epochs=10, validation_data=datagen.flow_from_dataframe(dataframe=train_csv,
                                                                  directory=r"/content/train_images",
                                                                  x_col="image_id",
