@@ -15,7 +15,19 @@ from tf_bi_tempered_loss import BiTemperedLogisticLoss
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
 
-datagen = ImageDataGenerator(rescale=1. / 255, validation_split=0.2)
+datagen = ImageDataGenerator(rescale=1. / 255, validation_split=0.2, dtype=tf.float32)
+num_classes = 5
+label_smoothing = 0.2
+
+
+def custom_loss(y_actual, y_pred):
+	y_pred = tf.cast(y_pred, tf.float32)
+	y_actual = tf.cast(y_actual, tf.float32)
+	y_actual = (1 - num_classes / (num_classes - 1) * label_smoothing) * y_actual + label_smoothing / (num_classes - 1)
+
+	custom_loss = tf.keras.losses.categorical_crossentropy(y_actual, y_pred)
+	return custom_loss
+
 
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
@@ -50,7 +62,7 @@ reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2,
                               patience=3, min_lr=0.001)
 model.compile(
 	optimizer=opt,
-	loss=tf.keras.losses.CategoricalCrossentropy(),
+	loss=custom_loss,
 	metrics=['categorical_accuracy'])
 
 early = EarlyStopping(monitor='val_loss',
