@@ -4,71 +4,48 @@ from tensorflow.keras.mixed_precision import experimental as mixed_precision
 import pandas as pd
 from tensorflow.keras.layers import Flatten, Dense, LeakyReLU, BatchNormalization, Dropout
 from tensorflow.keras.callbacks import ReduceLROnPlateau
-import tensorflow_addons as tfa
+import numpy as np
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 from tensorflow.keras import regularizers
 import sys
+
 sys.path.append('./bitemperedloss-tf')
 from tf_bi_tempered_loss import BiTemperedLogisticLoss
 
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
 
-datagen = ImageDataGenerator(rescale=1. / 255, validation_split=0.2, horizontal_flip=True, vertical_flip=True)
+datagen = ImageDataGenerator(rescale=1. / 255, validation_split=0.2)
+
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 
-base_model = tf.keras.applications.ResNet50(include_top=False, weights=None)
+base_model = tf.keras.applications.EfficientNetB5(include_top=False, weights=None, classes=5)
 base_model.trainable = True
-
-radam = tfa.optimizers.RectifiedAdam()
-ranger = tfa.optimizers.Lookahead(radam, sync_period=6, slow_step_size=0.5)
 
 model = tf.keras.Sequential([
 	tf.keras.layers.Input((512, 512, 3)),
 	tf.keras.layers.BatchNormalization(renorm=True),
 	base_model,
-	tf.keras.layers.LeakyReLU(),
-	BatchNormalization(trainable=False),
 	tf.keras.layers.Flatten(),
-	tf.keras.layers.Dense(512, kernel_regularizer=regularizers.l2(0.0001)),
-	tf.keras.layers.LeakyReLU(),
-	BatchNormalization(trainable=False),
-	tf.keras.layers.Dense(256, kernel_regularizer=regularizers.l2(0.0001)),
-	tf.keras.layers.LeakyReLU(),
-	BatchNormalization(trainable=False),
-
-	tf.keras.layers.Dense(128, kernel_regularizer=regularizers.l2(0.0001)),
-	tf.keras.layers.LeakyReLU(),
-	BatchNormalization(trainable=False),
-	Dropout(0.5),
-	tf.keras.layers.LeakyReLU(),
-
-	BatchNormalization(trainable=False),
-
-	tf.keras.layers.Dense(64, kernel_regularizer=regularizers.l2(0.0001)),
-
-	tf.keras.layers.LeakyReLU(),
-	BatchNormalization(trainable=False),
-
-	tf.keras.layers.Dense(32, kernel_regularizer=regularizers.l2(0.0001)),
-	tf.keras.layers.LeakyReLU(),
-	Dropout(0.5),
-
-	BatchNormalization(trainable=False),
-
-	tf.keras.layers.LeakyReLU(),
-	BatchNormalization(trainable=False),
-
-	tf.keras.layers.Dense(16, kernel_regularizer=regularizers.l2(0.0001)),
-	tf.keras.layers.LeakyReLU(),
-	BatchNormalization(trainable=False),
-	tf.keras.layers.Dense(8),
-	tf.keras.layers.LeakyReLU(),
-	BatchNormalization(trainable=False),
+	Dense(256),
+	LeakyReLU(),
+	BatchNormalization(),
+	Dense(128),
+	LeakyReLU(),
+	BatchNormalization(),
+	Dense(64),
+	LeakyReLU(),
+	BatchNormalization(),
+	Dense(32),
+	LeakyReLU(),
+	BatchNormalization(),
+	Dense(16),
+	LeakyReLU(),
+	BatchNormalization(),
 	tf.keras.layers.Dense(5, activation='softmax')
 ])
-opt = tf.keras.optimizers.SGD(lr=0.03)
+opt = tf.keras.optimizers.SGD(lr=0.02)
 reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2,
                               patience=3, min_lr=0.001)
 model.compile(
@@ -88,13 +65,13 @@ model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
 	save_best_only=True)
 history = model.fit(datagen.flow_from_dataframe(dataframe=train_csv,
                                                 directory=r"/content/train_images", x_col="image_id",
-                                                y_col="label", target_size=(512, 512), batch_size=8,
+                                                y_col="label", target_size=(512, 512), batch_size=12,
                                                 subset="training", shuffle=True),
                     callbacks=[early, model_checkpoint_callback, reduce_lr],
-                    epochs=10, validation_data=datagen.flow_from_dataframe(dataframe=train_csv,
+                    epochs=30, validation_data=datagen.flow_from_dataframe(dataframe=train_csv,
                                                                            directory=r"/content/train_images",
                                                                            x_col="image_id",
                                                                            y_col="label", target_size=(512, 512),
-                                                                           class_mode="categorical", batch_size=8,
+                                                                           class_mode="categorical", batch_size=12,
                                                                            subset="validation", shuffle=True))
 model.load_weights(checkpoint_filepath)
