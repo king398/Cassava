@@ -3,21 +3,70 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.mixed_precision import experimental as mixed_precision
 import pandas as pd
 from tensorflow.keras.layers import Flatten, Dense, LeakyReLU, BatchNormalization, Dropout
-from tensorflow.python.keras.utils.data_utils import Sequence
-import tensorflow_addons as tfa
+import keras.backend as K
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
-import numpy as np
 
 physical_devices = tf.config.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
-
-datagen = ImageDataGenerator(rescale=1. / 255, validation_split=0.2,
-                             dtype=tf.float32, horizontal_flip=True)
+datagen = ImageDataGenerator(rescale=1. / 255, validation_split=0.2, horizontal_flip=True)
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
+
+
+def categorical_focal_loss_with_label_smoothing(gamma=2.0, alpha=0.25, ls=0.1, classes=5.0):
+	"""
+	Implementation of Focal Loss from the paper in multiclass classification
+	Formula:
+		loss = -alpha*((1-p)^gamma)*log(p)
+		y_ls = (1 - α) * y_hot + α / classes
+	Parameters:
+		alpha -- the same as wighting factor in balanced cross entropy
+		gamma -- focusing parameter for modulating factor (1-p)
+		ls    -- label smoothing parameter(alpha)
+		classes     -- No. of classes
+	Default value:
+		gamma -- 2.0 as mentioned in the paper
+		alpha -- 0.25 as mentioned in the paper
+		ls    -- 0.1
+		classes     -- 4
+	"""
+
+	def focal_loss(y_true, y_pred):
+		# Define epsilon so that the backpropagation will not result in NaN
+		# for 0 divisor case
+		epsilon = K.epsilon()
+		# Add the epsilon to prediction value
+		# y_pred = y_pred + epsilon
+		# label smoothing
+		y_pred_ls = (1 - ls) * y_pred + ls / classes
+		# Clip the prediction value
+		y_pred_ls = K.clip(y_pred_ls, epsilon, 1.0 - epsilon)
+		# Calculate cross entropy
+		cross_entropy = -y_true * K.log(y_pred_ls)
+		# Calculate weight that consists of  modulating factor and weighting factor
+		weight = alpha * y_true * K.pow((1 - y_pred_ls), gamma)
+		# Calculate focal loss
+		loss = weight * cross_entropy
+		# Sum the losses in mini_batch
+		loss = K.sum(loss, axis=1)
+		return loss
+
+	return focal_loss
+
+
+def custom_loss(y_actual, y_pred):
+	num_classes = 5
+	label_smoothing = 0.2
+	y_pred = tf.cast(y_pred, tf.float32)
+	y_actual = tf.cast(y_actual, tf.float32)
+	y_actual = (1 - num_classes / (num_classes - 1) * label_smoothing) * y_actual + label_smoothing / (num_classes - 1)
+
+	custom_loss = tf.keras.losses.categorical_crossentropy(y_actual, y_pred)
+	return custom_loss
+
 
 base_model = tf.keras.applications.ResNet50(include_top=False)
 base_model.trainable = True
@@ -60,11 +109,9 @@ model = tf.keras.Sequential([
 	tf.keras.layers.Dense(5, activation='softmax')
 ])
 opt = tf.keras.optimizers.SGD(0.03)
-
-loss = tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.2)
 model.compile(
 	optimizer=opt,
-	loss='categorical_crossentropy',
+	loss=categorical_focal_loss_with_label_smoothing(gamma=2.0, alpha=0.75, ls=0.2, classes=5.0),
 	metrics=['categorical_accuracy'])
 
 early = EarlyStopping(monitor='val_loss',
@@ -79,12 +126,12 @@ model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
 	save_best_only=True)
 model.fit(datagen.flow_from_dataframe(dataframe=train_csv,
                                       directory=r"/content/train_images", x_col="image_id",
-                                      y_col="label", target_size=(512, 512), class_mode="categorical", batch_size=32,
+                                      y_col="label", target_size=(512, 512), class_mode="categorical", batch_size=16,
                                       subset="training", shuffle=True), callbacks=[early, model_checkpoint_callback],
           epochs=10, validation_data=datagen.flow_from_dataframe(dataframe=train_csv,
                                                                  directory=r"/content/train_images",
                                                                  x_col="image_id",
                                                                  y_col="label", target_size=(512, 512),
-                                                                 class_mode="categorical", batch_size=32,
-                                                                 subset="validation", shuffle=True), batch_size=32)
+                                                                 class_mode="categorical", batch_size=16,
+                                                                 subset="validation", shuffle=True))
 model.load_weights(checkpoint_filepath)

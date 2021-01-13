@@ -68,7 +68,7 @@ def custom_loss(y_actual, y_pred):
 	return custom_loss
 
 
-base_model = tf.keras.applications.EfficientNetB6(include_top=False)
+base_model = tf.keras.applications.ResNet101(include_top=False, weights="imagenet")
 base_model.trainable = True
 
 model = tf.keras.Sequential([
@@ -126,12 +126,12 @@ model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
 	save_best_only=True)
 model.fit(datagen.flow_from_dataframe(dataframe=train_csv,
                                       directory=r"/content/train_images", x_col="image_id",
-                                      y_col="label", target_size=(512, 512), class_mode="categorical", batch_size=8,
+                                      y_col="label", target_size=(512, 512), class_mode="categorical", batch_size=16,
                                       subset="training", shuffle=True), callbacks=[early, model_checkpoint_callback],
           epochs=10, validation_data=datagen.flow_from_dataframe(dataframe=train_csv,
                                                                  directory=r"/content/train_images",
                                                                  x_col="image_id",
                                                                  y_col="label", target_size=(512, 512),
-                                                                 class_mode="categorical", batch_size=8,
+                                                                 class_mode="categorical", batch_size=16,
                                                                  subset="validation", shuffle=True), batch_size=8)
 model.load_weights(checkpoint_filepath)
