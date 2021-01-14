@@ -7,15 +7,16 @@ import keras.backend as K
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 import efficientnet.keras as efn
 import tensorflow_addons as tfa
+import numpy as np
 
 
 
-datagen = ImageDataGenerator(rescale=1. / 255, validation_split=0.2, horizontal_flip=True, vertical_flip=True)
+datagen = ImageDataGenerator(rescale=1. / 255, validation_split=0.2)
 train_csv = pd.read_csv(r"/content/merged.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 
 
-def categorical_focal_loss_with_label_smoothing(gamma=2.0, alpha=0.25, s=0.1, classes=5.0):
+def categorical_focal_loss_with_label_smoothing(gamma=2.0, alpha=0.25, ls=0.1, classes=5.0):
 	"""
 	Implementation of Focal Loss from the paper in multiclass classification
 	Formula:
@@ -54,8 +55,6 @@ def categorical_focal_loss_with_label_smoothing(gamma=2.0, alpha=0.25, s=0.1, cl
 		return loss
 
 	return focal_loss
-
-
 
 
 base_model = efn.EfficientNetB3(weights='noisy-student', input_shape=(512, 512, 3))
@@ -123,10 +122,10 @@ history = model.fit(datagen.flow_from_dataframe(dataframe=train_csv,
                                                 batch_size=12,
                                                 subset="training", shuffle=True),
                     callbacks=[early, model_checkpoint_callback],
-                    epochs=10, validation_data=datagen.flow_from_dataframe(dataframe=train_csv,
+                    epochs=20, validation_data=datagen.flow_from_dataframe(dataframe=train_csv,
                                                                            directory=r"/content/train",
                                                                            x_col="image_id",
-                                                                        y_col="label", target_size=(512, 512),
+                                                                           y_col="label", target_size=(512, 512),
                                                                            class_mode="categorical", batch_size=12,
                                                                            subset="validation", shuffle=True))
 model.load_weights(checkpoint_filepath)

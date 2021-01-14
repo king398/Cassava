@@ -4,11 +4,12 @@ from tqdm import tqdm
 import os
 import pandas as pd
 import keras
-import cv2
+import numpy as np
 
-model1 = tf.keras.models.load_model(r"../input/models-gcs/88effnetb3", compile=False)
+model1 = tf.keras.models.load_model(r"../input/models-gcs/88effnetb3moredata", compile=False)
 
-path = "../input/cassava-leaf-disease-classification/train_images"
+
+path = "../input/cassava-leaf-disease-classification/test_images"
 
 test_file_list = os.listdir(path)
 predictions = []
@@ -18,7 +19,7 @@ for filename in tqdm(test_file_list):
 	arr = tf.keras.preprocessing.image.img_to_array(img)
 	arr = tf.image.random_flip_left_right(arr)
 	arr = tf.expand_dims(arr / 255., 0)
-	model1_predict = (np.argmax(model1.predict(arr)))
+	model1_predict = (np.argmax(model1.predict(arr, training=False)))
 
 	pre = [model1_predict]
 	predictions.append(int(max(set(pre), key=pre.count)))
