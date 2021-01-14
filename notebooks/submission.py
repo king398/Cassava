@@ -4,9 +4,11 @@ from tqdm import tqdm
 import os
 import pandas as pd
 import keras
+import cv2
 
 model1 = tf.keras.models.load_model(r"../input/models-gcs/88effnetb3", compile=False)
-path = "../input/cassava-leaf-disease-classification/test_images"
+
+path = "../input/cassava-leaf-disease-classification/train_images"
 
 test_file_list = os.listdir(path)
 predictions = []

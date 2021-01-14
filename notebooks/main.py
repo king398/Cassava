@@ -1,139 +1,136 @@
-import numpy as np
-import pandas as pd
-import os
-from tqdm import tqdm
-from sklearn.utils import shuffle
-import warnings
 import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras import layers
-import datetime
-
-from tensorflow.keras.layers import Dense, Flatten, Dropout, Activation, Conv2D, MaxPool2D, Conv2DTranspose, LeakyReLU, \
-	BatchNormalization
-from tensorflow import keras
-from tensorflow.keras import layers
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.mixed_precision import experimental as mixed_precision
+import pandas as pd
+from tensorflow.keras.layers import Flatten, Dense, LeakyReLU, BatchNormalization, Dropout
+import keras.backend as K
+from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
+import efficientnet.keras as efn
+import tensorflow_addons as tfa
 
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
 
-model = Sequential()
-VGG = tf.keras.applications.VGG19(input_shape=(300, 300, 3), include_top=False, weights=None)
-Resnet = tf.keras.applications.ResNet152(input_shape=(300, 300, 3), include_top=False, weights=None, classes=5)
-Efficient_net = tf.keras.applications.EfficientNetB3(input_shape=(300, 300, 3), include_top=False)
+datagen = ImageDataGenerator(rescale=1. / 255, validation_split=0.2, horizontal_flip=True)
+train_csv = pd.read_csv(r"/content/train.csv")
+train_csv["label"] = train_csv["label"].astype(str)
 
-model.add(layers.experimental.preprocessing.Rescaling(1. / 255))
 
-model.add(Efficient_net)
-model.add(LeakyReLU())
-model.add(BatchNormalization())
-model.add(Conv2DTranspose(filters=512, strides=1, kernel_size=2, padding="same"))
-model.add(BatchNormalization())
+def categorical_focal_loss_with_label_smoothing(gamma=2.0, alpha=0.25, ls=0.1, classes=5.0):
+	"""
+	Implementation of Focal Loss from the paper in multiclass classification
+	Formula:
+		loss = -alpha*((1-p)^gamma)*log(p)
+		y_ls = (1 - α) * y_hot + α / classes
+	Parameters:
+		alpha -- the same as wighting factor in balanced cross entropy
+		gamma -- focusing parameter for modulating factor (1-p)
+		ls    -- label smoothing parameter(alpha)
+		classes     -- No. of classes
+	Default value:
+		gamma -- 2.0 as mentioned in the paper
+		alpha -- 0.25 as mentioned in the paper
+		ls    -- 0.1
+		classes     -- 4
+	"""
 
-model.add(Conv2DTranspose(filters=512, strides=1, kernel_size=2, padding="same"))
-model.add(BatchNormalization())
+	def focal_loss(y_true, y_pred):
+		# Define epsilon so that the backpropagation will not result in NaN
+		# for 0 divisor case
+		epsilon = K.epsilon()
+		# Add the epsilon to prediction value
+		# y_pred = y_pred + epsilon
+		# label smoothing
+		y_pred_ls = (1 - ls) * y_pred + ls / classes
+		# Clip the prediction value
+		y_pred_ls = K.clip(y_pred_ls, epsilon, 1.0 - epsilon)
+		# Calculate cross entropy
+		cross_entropy = -y_true * K.log(y_pred_ls)
+		# Calculate weight that consists of  modulating factor and weighting factor
+		weight = alpha * y_true * K.pow((1 - y_pred_ls), gamma)
+		# Calculate focal loss
+		loss = weight * cross_entropy
+		# Sum the losses in mini_batch
+		loss = K.sum(loss, axis=1)
+		return loss
 
-model.add(Conv2D(filters=512, kernel_size=2, strides=1, activation="relu", padding="same"))
-model.add(BatchNormalization())
+	return focal_loss
 
-model.add(Conv2D(filters=512, kernel_size=2, strides=1, activation="relu", padding="same"))
-model.add(BatchNormalization())
 
-model.add(MaxPool2D(pool_size=2, strides=1, padding="same"))
+def custom_loss(y_actual, y_pred):
+	num_classes = 5
+	label_smoothing = 0.1
+	tf.one_hot(y_actual, depth=num_classes)
 
-model.add(BatchNormalization())
-model.add(Conv2DTranspose(filters=256, strides=1, kernel_size=2, padding="same"))
-model.add(BatchNormalization())
+	y_pred = tf.cast(y_pred, tf.float32)
+	y_actual = tf.cast(y_actual, tf.float32)
+	y_actual = (1 - num_classes / (num_classes - 1) * label_smoothing) * y_actual + label_smoothing / (num_classes - 1)
 
-model.add(Conv2D(filters=256, kernel_size=1, strides=1, activation="relu", padding="same"))
-model.add(BatchNormalization())
+	custom_loss = tf.keras.losses.categorical_crossentropy(y_actual, y_pred)
+	return custom_loss
 
-model.add(Conv2D(filters=256, kernel_size=1, strides=1, activation="relu", padding="same"))
-model.add(BatchNormalization())
 
-model.add(MaxPool2D(pool_size=2, strides=1, padding="same"))
-model.add(BatchNormalization())
+base_model = efn.EfficientNetB3(weights='noisy-student', input_shape=(512, 512, 3))
 
-model.add(Conv2DTranspose(filters=128, strides=1, kernel_size=2, padding="same"))
-model.add(BatchNormalization())
+base_model.trainable = True
 
-model.add(Conv2D(filters=128, kernel_size=2, strides=1, activation="relu", padding="same"))
-model.add(BatchNormalization())
+model = tf.keras.Sequential([
+	tf.keras.layers.Input((512, 512, 3)),
+	tf.keras.layers.BatchNormalization(renorm=True),
+	base_model,
+	BatchNormalization(),
+	tf.keras.layers.LeakyReLU(),
+	tf.keras.layers.Flatten(),
+	tf.keras.layers.Dense(256),
+	BatchNormalization(),
 
-model.add(Conv2D(filters=128, kernel_size=2, strides=1, activation="relu", padding="same"))
-model.add(BatchNormalization())
+	tf.keras.layers.LeakyReLU(),
 
-model.add(MaxPool2D(pool_size=2, strides=1, padding="same"))
-model.add(BatchNormalization())
-model.add(Conv2D(filters=64, kernel_size=2, strides=1, activation="relu", padding="same"))
-model.add(BatchNormalization())
+	tf.keras.layers.Dense(128),
+	BatchNormalization(),
 
-model.add(Conv2D(filters=64, kernel_size=2, strides=1, activation="relu", padding="same"))
-model.add(BatchNormalization())
+	tf.keras.layers.LeakyReLU(),
+	BatchNormalization(),
 
-model.add(MaxPool2D(pool_size=2, strides=1, padding="same"))
-model.add(BatchNormalization())
+	tf.keras.layers.Dropout(0.4),
+	BatchNormalization(),
 
-model.add(Conv2DTranspose(filters=32, strides=1, kernel_size=2, padding="same"))
-model.add(BatchNormalization())
+	tf.keras.layers.Dense(64),
 
-model.add(Conv2D(filters=32, kernel_size=2, strides=1, activation="relu", padding="same"))
-model.add(BatchNormalization())
+	tf.keras.layers.LeakyReLU(),
+	tf.keras.layers.Dense(32),
+	BatchNormalization(),
 
-model.add(Conv2D(filters=32, kernel_size=2, strides=1, activation="relu", padding="same"))
-model.add(BatchNormalization())
+	tf.keras.layers.Dropout(0.4),
 
-model.add(MaxPool2D(pool_size=2, strides=1, padding="same"))
-model.add(BatchNormalization())
-model.add(Conv2D(filters=16, kernel_size=2, strides=1, activation="relu", padding="same"))
-model.add(BatchNormalization())
+	tf.keras.layers.LeakyReLU(),
+	tf.keras.layers.Dense(16),
 
-model.add(Conv2D(filters=16, kernel_size=2, strides=1, activation="relu", padding="same"))
-model.add(BatchNormalization())
+	tf.keras.layers.LeakyReLU(),
+	tf.keras.layers.Dense(8),
+	tf.keras.layers.LeakyReLU(),
+	tf.keras.layers.Dense(5, activation='softmax')
+])
+radam = tfa.optimizers.RectifiedAdam()
+ranger = tfa.optimizers.Lookahead(radam, sync_period=6, slow_step_size=0.5)
+opt = tf.keras.optimizers.SGD(0.03)
+model.compile(
+	optimizer=opt,
+	loss=custom_loss,
+	metrics=['categorical_accuracy'])
 
-model.add(MaxPool2D(pool_size=2, strides=1, padding="same"))
-model.add(BatchNormalization())
-
-model.add(Flatten())
-model.add(LeakyReLU())
-model.add(Dense(512, activation="relu"))
-model.add(LeakyReLU())
-model.add(tf.keras.layers.Activation('relu'))
-model.add(Dense(256, activation="relu"))
-model.add(LeakyReLU())
-model.add(tf.keras.layers.Activation('relu'))
-model.add(LeakyReLU())
-
-model.add(Dense(128, activation="relu"))
-model.add(LeakyReLU())
-
-model.add(Dense(64, activation="relu"))
-
-model.add(LeakyReLU())
-
-model.add(Dense(32, activation="relu"))
-model.add(LeakyReLU())
-
-model.add(Dense(16, activation="relu"))
-
-model.add(LeakyReLU())
-
-model.add(Dense(8, activation="relu"))
-
-model.add(Dense(5, activation="softmax"))
-opt = tf.keras.optimizers.Adagrad(learning_rate=0.01)
-model.compile(optimizer=opt,
-              loss="sparse_categorical_crossentropy",
-              metrics=['accuracy'])
-checkpoint_filepath = "./"
-log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
-model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_filepath,
-                                                               monitor='accuracy',
-                                                               mode='max',
-                                                               save_best_only=True)
-
-model.fit(images, labels, batch_size=16
-          , shuffle=True, epochs=15, callbacks=[model_checkpoint_callback, tensorboard_callback], validation_split=0.15)
-model.save(r"/content/models", include_optimizer=True)
+early = EarlyStopping(monitor='val_loss',
+                      mode='min',
+                      patience=5)
+checkpoint_filepath = r"/content/temp/"
+model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
+	filepath=checkpoint_filepath,
+	save_weights_only=True,
+	monitor='val_categorical_accuracy',
+	mode='max',
+	save_best_only=True)
+history = model.fit(train_ds_batch,
+                    validation_data=valid_ds_batch,
+                    callbacks=[early, model_checkpoint_callback],
+                    epochs=10)
+model.load_weights(checkpoint_filepath)

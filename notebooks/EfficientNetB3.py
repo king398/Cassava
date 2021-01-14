@@ -6,18 +6,16 @@ from tensorflow.keras.layers import Flatten, Dense, LeakyReLU, BatchNormalizatio
 import keras.backend as K
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 import efficientnet.keras as efn
+import tensorflow_addons as tfa
 
-physical_devices = tf.config.list_physical_devices('GPU')
-tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
-policy = mixed_precision.Policy('mixed_float16')
-mixed_precision.set_policy(policy)
-datagen = ImageDataGenerator(rescale=1. / 255, validation_split=0.2, horizontal_flip=True)
-train_csv = pd.read_csv(r"/content/train.csv")
+
+datagen = ImageDataGenerator(rescale=1. / 255, validation_split=0.2, horizontal_flip=True, vertical_flip=True)
+train_csv = pd.read_csv(r"/content/merged.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 
 
-def categorical_focal_loss_with_label_smoothing(gamma=2.0, alpha=0.25, ls=0.1, classes=5.0):
+def categorical_focal_loss_with_label_smoothing(gamma=2.0, alpha=0.25, s=0.1, classes=5.0):
 	"""
 	Implementation of Focal Loss from the paper in multiclass classification
 	Formula:
@@ -32,7 +30,7 @@ def categorical_focal_loss_with_label_smoothing(gamma=2.0, alpha=0.25, ls=0.1, c
 		gamma -- 2.0 as mentioned in the paper
 		alpha -- 0.25 as mentioned in the paper
 		ls    -- 0.1
-		classes     -- 4
+		classes     -- 5
 	"""
 
 	def focal_loss(y_true, y_pred):
@@ -58,15 +56,6 @@ def categorical_focal_loss_with_label_smoothing(gamma=2.0, alpha=0.25, ls=0.1, c
 	return focal_loss
 
 
-def custom_loss(y_actual, y_pred):
-	num_classes = 5
-	label_smoothing = 0.2
-	y_pred = tf.cast(y_pred, tf.float32)
-	y_actual = tf.cast(y_actual, tf.float32)
-	y_actual = (1 - num_classes / (num_classes - 1) * label_smoothing) * y_actual + label_smoothing / (num_classes - 1)
-
-	custom_loss = tf.keras.losses.categorical_crossentropy(y_actual, y_pred)
-	return custom_loss
 
 
 base_model = efn.EfficientNetB3(weights='noisy-student', input_shape=(512, 512, 3))
@@ -110,10 +99,12 @@ model = tf.keras.Sequential([
 	tf.keras.layers.LeakyReLU(),
 	tf.keras.layers.Dense(5, activation='softmax')
 ])
+radam = tfa.optimizers.RectifiedAdam()
+ranger = tfa.optimizers.Lookahead(radam, sync_period=6, slow_step_size=0.5)
 opt = tf.keras.optimizers.SGD(0.03)
 model.compile(
 	optimizer=opt,
-	loss=categorical_focal_loss_with_label_smoothing(gamma=2.0, alpha=0.75, ls=0.1, classes=5.0),
+	loss=categorical_focal_loss_with_label_smoothing(),
 	metrics=['categorical_accuracy'])
 
 early = EarlyStopping(monitor='val_loss',
@@ -127,16 +118,15 @@ model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
 	mode='max',
 	save_best_only=True)
 history = model.fit(datagen.flow_from_dataframe(dataframe=train_csv,
-                                                directory=r"/content/train_images", x_col="image_id",
+                                                directory=r"/content/train", x_col="image_id",
                                                 y_col="label", target_size=(512, 512), class_mode="categorical",
-                                                batch_size=16,
+                                                batch_size=12,
                                                 subset="training", shuffle=True),
                     callbacks=[early, model_checkpoint_callback],
                     epochs=10, validation_data=datagen.flow_from_dataframe(dataframe=train_csv,
-                                                                           directory=r"/content/train_images",
+                                                                           directory=r"/content/train",
                                                                            x_col="image_id",
-                                                                           y_col="label", target_size=(512, 512),
-                                                                           class_mode="categorical", batch_size=16,
-                                                                           subset="validation", shuffle=True),
-                    batch_size=16)
+                                                                        y_col="label", target_size=(512, 512),
+                                                                           class_mode="categorical", batch_size=12,
+                                                                           subset="validation", shuffle=True))
 model.load_weights(checkpoint_filepath)
