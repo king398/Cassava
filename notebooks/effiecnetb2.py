@@ -13,7 +13,6 @@ tf.config.experimental.set_memory_growth(physical_devices[0], True)
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
 
-
 datagen = ImageDataGenerator(rescale=1. / 255, validation_split=0.2, horizontal_flip=True)
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
@@ -60,7 +59,14 @@ def categorical_focal_loss_with_label_smoothing(gamma=2.0, alpha=0.25, ls=0.1, c
 	return focal_loss
 
 
-
+def custom_loss(y_true, y_pred):
+	ls = 0.1
+	classes = 5
+	y_true = tf.cast(y_true, dtype=tf.float32)
+	y_pred = tf.cast(y_pred, dtype=tf.float32)
+	y_true = (1 - ls) * y_pred + ls / classes
+	custom_loss = tf.keras.losses.categorical_crossentropy(y_true, y_pred)
+	return custom_loss
 
 
 base_model = efn.EfficientNetB2(weights='noisy-student', input_shape=(512, 512, 3))
@@ -109,7 +115,7 @@ ranger = tfa.optimizers.Lookahead(radam, sync_period=6, slow_step_size=0.5)
 opt = tf.keras.optimizers.SGD(0.03)
 model.compile(
 	optimizer=ranger,
-	loss=categorical_focal_loss_with_label_smoothing(gamma=2.0, alpha=0.75, ls=0.1, classes=5.0),
+	loss=custom_loss,
 	metrics=['categorical_accuracy'])
 
 early = EarlyStopping(monitor='val_loss',

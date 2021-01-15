@@ -1,3 +1,4 @@
+
 import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.mixed_precision import experimental as mixed_precision
@@ -31,7 +32,7 @@ def categorical_focal_loss_with_label_smoothing(gamma=2.0, alpha=0.25, ls=0.1, c
 		gamma -- 2.0 as mentioned in the paper
 		alpha -- 0.25 as mentioned in the paper
 		ls    -- 0.1
-		classes     -- 5
+		classes     -- 4
 	"""
 
 	def focal_loss(y_true, y_pred):
@@ -57,6 +58,7 @@ def categorical_focal_loss_with_label_smoothing(gamma=2.0, alpha=0.25, ls=0.1, c
 	return focal_loss
 
 
+
 base_model = efn.EfficientNetB3(weights='noisy-student', input_shape=(512, 512, 3))
 
 base_model.trainable = True
@@ -66,51 +68,51 @@ model = tf.keras.Sequential([
 	tf.keras.layers.BatchNormalization(renorm=True),
 	base_model,
 	BatchNormalization(),
-	LeakyReLU(),
-	Flatten(),
-	Dense(256),
+	tf.keras.layers.LeakyReLU(),
+	tf.keras.layers.Flatten(),
+	tf.keras.layers.Dense(256),
 	BatchNormalization(),
 
-	LeakyReLU(),
+	tf.keras.layers.LeakyReLU(),
 
-	Dense(128),
+	tf.keras.layers.Dense(128),
 	BatchNormalization(),
 
-	LeakyReLU(),
+	tf.keras.layers.LeakyReLU(),
 	BatchNormalization(),
 
-	Dropout(0.4),
+	tf.keras.layers.Dropout(0.3),
 	BatchNormalization(),
 
-	Dense(64),
+	tf.keras.layers.Dense(64),
 
-	LeakyReLU(),
-	Dense(32),
+	tf.keras.layers.LeakyReLU(),
+	tf.keras.layers.Dense(32),
 	BatchNormalization(),
 
-	Dropout(0.4),
+	tf.keras.layers.Dropout(0.3),
 
-	LeakyReLU(),
-	Dense(16),
+	tf.keras.layers.LeakyReLU(),
+	tf.keras.layers.Dense(16),
 
-	LeakyReLU(),
-	Dense(8),
-	LeakyReLU(),
-	Dense(5, activation='softmax')
+	tf.keras.layers.LeakyReLU(),
+	tf.keras.layers.Dense(8),
+	tf.keras.layers.LeakyReLU(),
+	tf.keras.layers.Dense(5, activation='softmax')
 ])
 radam = tfa.optimizers.RectifiedAdam()
 ranger = tfa.optimizers.Lookahead(radam, sync_period=6, slow_step_size=0.5)
 opt = tf.keras.optimizers.SGD(0.03)
 model.compile(
-	optimizer=opt,
-	loss=categorical_focal_loss_with_label_smoothing(),
+	optimizer=ranger,
+	loss=tf.keras.losses.CategoricalCrossentropy(),
 	metrics=['categorical_accuracy'])
 
 early = EarlyStopping(monitor='val_loss',
                       mode='min',
                       patience=5)
 checkpoint_filepath = r"/content/temp/"
-model_checkpoint_callback = ModelCheckpoint(
+model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
 	filepath=checkpoint_filepath,
 	save_weights_only=True,
 	monitor='val_categorical_accuracy',
@@ -122,10 +124,11 @@ history = model.fit(datagen.flow_from_dataframe(dataframe=train_csv,
                                                 batch_size=16,
                                                 subset="training", shuffle=True),
                     callbacks=[early, model_checkpoint_callback],
-                    epochs=20, validation_data=datagen.flow_from_dataframe(dataframe=train_csv,
+                    epochs=10, validation_data=datagen.flow_from_dataframe(dataframe=train_csv,
                                                                            directory=r"/content/train_images",
                                                                            x_col="image_id",
                                                                            y_col="label", target_size=(512, 512),
                                                                            class_mode="categorical", batch_size=16,
-                                                                           subset="validation", shuffle=True))
+                                                                           subset="validation", shuffle=True),
+                    batch_size=16)
 model.load_weights(checkpoint_filepath)
