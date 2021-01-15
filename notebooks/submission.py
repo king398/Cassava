@@ -19,7 +19,7 @@ for filename in tqdm(test_file_list):
 	arr = tf.keras.preprocessing.image.img_to_array(img)
 	arr = tf.image.random_flip_left_right(arr)
 	arr = tf.expand_dims(arr / 255., 0)
-	model1_predict = (np.argmax(model1.predict(arr, training=False)))
+	model1_predict = (np.argmax(model1.predict(arr, training=False,)))
 
 	pre = [model1_predict]
 	predictions.append(int(max(set(pre), key=pre.count)))
