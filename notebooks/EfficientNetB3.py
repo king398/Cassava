@@ -7,7 +7,6 @@ import keras.backend as K
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 import efficientnet.keras as efn
 import tensorflow_addons as tfa
-import numpy as np
 
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
@@ -67,37 +66,37 @@ model = tf.keras.Sequential([
 	tf.keras.layers.BatchNormalization(renorm=True),
 	base_model,
 	BatchNormalization(),
-	tf.keras.layers.LeakyReLU(),
-	tf.keras.layers.Flatten(),
-	tf.keras.layers.Dense(256),
+	LeakyReLU(),
+	Flatten(),
+	Dense(256),
 	BatchNormalization(),
 
-	tf.keras.layers.LeakyReLU(),
+	LeakyReLU(),
 
-	tf.keras.layers.Dense(128),
+	Dense(128),
 	BatchNormalization(),
 
-	tf.keras.layers.LeakyReLU(),
+	LeakyReLU(),
 	BatchNormalization(),
 
-	tf.keras.layers.Dropout(0.4),
+	Dropout(0.4),
 	BatchNormalization(),
 
-	tf.keras.layers.Dense(64),
+	Dense(64),
 
-	tf.keras.layers.LeakyReLU(),
-	tf.keras.layers.Dense(32),
+	LeakyReLU(),
+	Dense(32),
 	BatchNormalization(),
 
-	tf.keras.layers.Dropout(0.4),
+	Dropout(0.4),
 
-	tf.keras.layers.LeakyReLU(),
-	tf.keras.layers.Dense(16),
+	LeakyReLU(),
+	Dense(16),
 
-	tf.keras.layers.LeakyReLU(),
-	tf.keras.layers.Dense(8),
-	tf.keras.layers.LeakyReLU(),
-	tf.keras.layers.Dense(5, activation='softmax')
+	LeakyReLU(),
+	Dense(8),
+	LeakyReLU(),
+	Dense(5, activation='softmax')
 ])
 radam = tfa.optimizers.RectifiedAdam()
 ranger = tfa.optimizers.Lookahead(radam, sync_period=6, slow_step_size=0.5)
@@ -111,7 +110,7 @@ early = EarlyStopping(monitor='val_loss',
                       mode='min',
                       patience=5)
 checkpoint_filepath = r"/content/temp/"
-model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
+model_checkpoint_callback = ModelCheckpoint(
 	filepath=checkpoint_filepath,
 	save_weights_only=True,
 	monitor='val_categorical_accuracy',
