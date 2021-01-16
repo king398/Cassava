@@ -128,3 +128,4 @@ history = model.fit(datagen.flow_from_dataframe(dataframe=train_csv,
                                                                            class_mode="categorical", batch_size=16,
                                                                            subset="validation", shuffle=True))
 model.load_weights(checkpoint_filepath)
+import  numpy as np

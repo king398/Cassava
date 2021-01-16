@@ -57,7 +57,7 @@ def categorical_focal_loss_with_label_smoothing(gamma=2.0, alpha=0.25, ls=0.1, c
 	return focal_loss
 
 
-base_model = efn.EfficientNetB3(weights='noisy-student', input_shape=(512, 512, 3), include_top=False)
+base_model = efn.EfficientNetB3(weights='noisy-student', input_shape=(512, 512, 3))
 
 base_model.trainable = True
 
@@ -101,8 +101,9 @@ model = tf.keras.Sequential([
 opt = tf.keras.optimizers.SGD(0.03)
 model.compile(
 	optimizer=opt,
-	loss=categorical_focal_loss_with_label_smoothing(),
+	loss=tf.keras.losses.CategoricalCrossentropy(),
 	metrics=['categorical_accuracy'])
+
 
 checkpoint_filepath = r"/content/temp/"
 model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
