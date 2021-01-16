@@ -59,7 +59,7 @@ def categorical_focal_loss_with_label_smoothing(gamma=2.0, alpha=0.25, ls=0.1, c
 
 
 
-base_model = efn.EfficientNetB3(weights='noisy-student', input_shape=(512, 512, 3))
+base_model = efn.EfficientNetB3(weights='noisy-student', input_shape=(512, 512, 3), include_top=False)
 
 base_model.trainable = True
 
@@ -81,7 +81,7 @@ model = tf.keras.Sequential([
 	tf.keras.layers.LeakyReLU(),
 	BatchNormalization(),
 
-	tf.keras.layers.Dropout(0.3),
+	tf.keras.layers.Dropout(0.4),
 	BatchNormalization(),
 
 	tf.keras.layers.Dense(64),
@@ -90,7 +90,7 @@ model = tf.keras.Sequential([
 	tf.keras.layers.Dense(32),
 	BatchNormalization(),
 
-	tf.keras.layers.Dropout(0.3),
+	tf.keras.layers.Dropout(0.4),
 
 	tf.keras.layers.LeakyReLU(),
 	tf.keras.layers.Dense(16),
@@ -105,7 +105,7 @@ ranger = tfa.optimizers.Lookahead(radam, sync_period=6, slow_step_size=0.5)
 opt = tf.keras.optimizers.SGD(0.03)
 model.compile(
 	optimizer=ranger,
-	loss=tf.keras.losses.CategoricalCrossentropy(),
+	loss=categorical_focal_loss_with_label_smoothing(),
 	metrics=['categorical_accuracy'])
 
 early = EarlyStopping(monitor='val_loss',
