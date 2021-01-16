@@ -1,4 +1,3 @@
-
 import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.mixed_precision import experimental as mixed_precision
@@ -12,7 +11,7 @@ import tensorflow_addons as tfa
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
 
-datagen = ImageDataGenerator(rescale=1. / 255, validation_split=0.2)
+datagen = ImageDataGenerator(rescale=1. / 255, validation_split=0.2, horizontal_flip=True)
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 
@@ -58,8 +57,7 @@ def categorical_focal_loss_with_label_smoothing(gamma=2.0, alpha=0.25, ls=0.1, c
 	return focal_loss
 
 
-
-base_model = efn.EfficientNetB3(weights='imagenet', input_shape=(512, 512, 3), include_top=False)
+base_model = efn.EfficientNetB3(weights='imagenet', input_shape=(512, 512, 3),include_top=False)
 
 base_model.trainable = True
 
@@ -70,6 +68,10 @@ model = tf.keras.Sequential([
 	BatchNormalization(),
 	tf.keras.layers.LeakyReLU(),
 	tf.keras.layers.Flatten(),
+  tf.keras.layers.Dense(512),
+	BatchNormalization(),
+
+	tf.keras.layers.LeakyReLU(),
 	tf.keras.layers.Dense(256),
 	BatchNormalization(),
 
@@ -103,12 +105,9 @@ model = tf.keras.Sequential([
 opt = tf.keras.optimizers.SGD(0.03)
 model.compile(
 	optimizer=opt,
-	loss=categorical_focal_loss_with_label_smoothing(),
+	loss=tf.keras.losses.CategoricalCrossentropy(),
 	metrics=['categorical_accuracy'])
 
-early = EarlyStopping(monitor='val_loss',
-                      mode='min',
-                      patience=5)
 checkpoint_filepath = r"/content/temp/"
 model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
 	filepath=checkpoint_filepath,
@@ -121,12 +120,11 @@ history = model.fit(datagen.flow_from_dataframe(dataframe=train_csv,
                                                 y_col="label", target_size=(512, 512), class_mode="categorical",
                                                 batch_size=16,
                                                 subset="training", shuffle=True),
-                    callbacks=[early, model_checkpoint_callback],
-                    epochs=10, validation_data=datagen.flow_from_dataframe(dataframe=train_csv,
+                    callbacks=[model_checkpoint_callback],
+                    epochs=25, validation_data=datagen.flow_from_dataframe(dataframe=train_csv,
                                                                            directory=r"/content/train_images",
                                                                            x_col="image_id",
                                                                            y_col="label", target_size=(512, 512),
                                                                            class_mode="categorical", batch_size=16,
-                                                                           subset="validation", shuffle=True),
-                    batch_size=16)
+                                                                           subset="validation", shuffle=True))
 model.load_weights(checkpoint_filepath)

@@ -1,4 +1,3 @@
-
 import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.mixed_precision import experimental as mixed_precision
@@ -58,7 +57,6 @@ def categorical_focal_loss_with_label_smoothing(gamma=2.0, alpha=0.25, ls=0.1, c
 	return focal_loss
 
 
-
 base_model = efn.EfficientNetB3(weights='noisy-student', input_shape=(512, 512, 3), include_top=False)
 
 base_model.trainable = True
@@ -106,9 +104,6 @@ model.compile(
 	loss=categorical_focal_loss_with_label_smoothing(),
 	metrics=['categorical_accuracy'])
 
-early = EarlyStopping(monitor='val_loss',
-                      mode='min',
-                      patience=5)
 checkpoint_filepath = r"/content/temp/"
 model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
 	filepath=checkpoint_filepath,
@@ -121,8 +116,8 @@ history = model.fit(datagen.flow_from_dataframe(dataframe=train_csv,
                                                 y_col="label", target_size=(512, 512), class_mode="categorical",
                                                 batch_size=16,
                                                 subset="training", shuffle=True),
-                    callbacks=[early, model_checkpoint_callback],
-                    epochs=10, validation_data=datagen.flow_from_dataframe(dataframe=train_csv,
+                    callbacks=[model_checkpoint_callback],
+                    epochs=30, validation_data=datagen.flow_from_dataframe(dataframe=train_csv,
                                                                            directory=r"/content/train_images",
                                                                            x_col="image_id",
                                                                            y_col="label", target_size=(512, 512),

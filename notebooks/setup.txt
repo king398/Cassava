@@ -1,7 +1,12 @@
 !pip install --ignore-installed --upgrade kaggle
-
+!pip install --upgrade tensorflow-gpu==2.3.1
+!pip install --upgrade tensorflow-addons
+!pip3 install gpustat
+!pip install -U efficientnet
+!sudo apt install htop
 from google.colab import files
 files.upload()
+!git clone https://github.com/Diulhio/bitemperedloss-tf.git
 ! mkdir ~/.kaggle
 ! cp kaggle.json ~/.kaggle/
 ! chmod 600 ~/.kaggle/kaggle.json
