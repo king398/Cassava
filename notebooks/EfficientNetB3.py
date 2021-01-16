@@ -100,11 +100,9 @@ model = tf.keras.Sequential([
 	tf.keras.layers.LeakyReLU(),
 	tf.keras.layers.Dense(5, activation='softmax')
 ])
-radam = tfa.optimizers.RectifiedAdam()
-ranger = tfa.optimizers.Lookahead(radam, sync_period=6, slow_step_size=0.5)
 opt = tf.keras.optimizers.SGD(0.03)
 model.compile(
-	optimizer=ranger,
+	optimizer=opt,
 	loss=categorical_focal_loss_with_label_smoothing(),
 	metrics=['categorical_accuracy'])
 
