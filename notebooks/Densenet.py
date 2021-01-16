@@ -56,7 +56,7 @@ def categorical_focal_loss_with_label_smoothing(gamma=2.0, alpha=0.25, ls=0.1, c
 	return focal_loss
 
 
-base_model = tf.keras.applications.DenseNet201(weights="imagenet")
+base_model = tf.keras.applications.DenseNet201(weights="imagenet", include_top=False, pooling="same")
 
 base_model.trainable = True
 
@@ -67,7 +67,7 @@ model = tf.keras.Sequential([
 	BatchNormalization(),
 	tf.keras.layers.LeakyReLU(),
 	tf.keras.layers.Flatten(),
-  tf.keras.layers.Dense(512),
+	tf.keras.layers.Dense(512),
 	BatchNormalization(),
 
 	tf.keras.layers.LeakyReLU(),
