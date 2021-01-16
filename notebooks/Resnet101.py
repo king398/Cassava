@@ -56,7 +56,7 @@ def categorical_focal_loss_with_label_smoothing(gamma=2.0, alpha=0.25, ls=0.1, c
 	return focal_loss
 
 
-base_model = tf.keras.applications.ResNet101(include_top=False,weights="imagenet")
+base_model = tf.keras.applications.ResNet101(weights="imagenet")
 
 base_model.trainable = True
 
