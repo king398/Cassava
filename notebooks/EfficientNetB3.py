@@ -11,7 +11,7 @@ import tensorflow_addons as tfa
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
 
-datagen = ImageDataGenerator(rescale=1. / 255, validation_split=0.2)
+datagen = ImageDataGenerator(rescale=1. / 255, validation_split=0.2, horizontal_flip=True)
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 
@@ -105,11 +105,11 @@ model = tf.keras.Sequential([
 ])
 first_decay_steps = 1000
 
-lr = (tf.keras.experimental.CosineDecayRestarts(0.03, first_decay_steps))
+lr = (tf.keras.experimental.CosineDecayRestarts(0.04, first_decay_steps))
 opt = tf.keras.optimizers.SGD(lr)
 model.compile(
 	optimizer=opt,
-	loss=categorical_focal_loss_with_label_smoothing(),
+	loss=tf.keras.losses.CategoricalCrossentropy(),
 	metrics=['categorical_accuracy'])
 
 checkpoint_filepath = r"/content/temp/"
