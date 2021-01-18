@@ -11,7 +11,7 @@ import tensorflow_addons as tfa
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
 
-datagen = ImageDataGenerator(rescale=1. / 255, validation_split=0.2, horizontal_flip=True)
+datagen = ImageDataGenerator(rescale=1. / 255, validation_split=0.2)
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 
@@ -62,7 +62,12 @@ base_model = efn.EfficientNetB3(weights='imagenet', input_shape=(512, 512, 3), i
 base_model.trainable = True
 
 model = tf.keras.Sequential([
+
 	tf.keras.layers.Input((512, 512, 3)),
+	tf.keras.layers.experimental.preprocessing.RandomFlip(
+    mode=HORIZONTAL_AND_VERTICAL, seed=None, name=None),
+	tf.keras.layers.experimental.preprocessing.RandomRotation(0.2),
+	tf.keras.layers.experimental.preprocessing.RandomContrast(0.2),
 	tf.keras.layers.BatchNormalization(renorm=True),
 	base_model,
 	BatchNormalization(),
@@ -100,7 +105,7 @@ model = tf.keras.Sequential([
 	tf.keras.layers.LeakyReLU(),
 	tf.keras.layers.Dense(8),
 	tf.keras.layers.LeakyReLU(),
-	tf.keras.layers.Dense(5, activation='softmax')
+	tf.keras.layers.Dense(5, activation='softmax', dtype='float32')
 ])
 first_decay_steps = 1000
 
