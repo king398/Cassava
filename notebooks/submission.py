@@ -1,16 +1,19 @@
 import tensorflow as tf
-import numpy as np
 from tqdm import tqdm
 import os
 import pandas as pd
-import keras
 import numpy as np
 
 model1 = tf.keras.models.load_model(r"../input/models-gcs/88effnetb3moredata", compile=False)
+model2 = tf.keras.models.load_model(r"../input/models-gcs/88effnetb3custom", compile=False)
+model3 = tf.keras.models.load_model(r"../input/models-gcs/88effnetb3noisyincludetopTrue", compile=False)
+
+
+
+
 
 
 path = "../input/cassava-leaf-disease-classification/test_images"
-
 test_file_list = os.listdir(path)
 predictions = []
 model1_predict_list = []
@@ -19,9 +22,11 @@ for filename in tqdm(test_file_list):
 	arr = tf.keras.preprocessing.image.img_to_array(img)
 	arr = tf.image.random_flip_left_right(arr)
 	arr = tf.expand_dims(arr / 255., 0)
-	model1_predict = (np.argmax(model1.predict(arr, training=False,)))
+	model1_predict = np.argmax(model1.predict(arr))
+	model2_predict = np.argmax(model2.predict(arr))
+	model3_predict = np.argmax(model3.predict(arr))
 
-	pre = [model1_predict]
+	pre = [model1_predict, model2_predict, model3_predict]
 	predictions.append(int(max(set(pre), key=pre.count)))
 
 df = pd.DataFrame(zip(test_file_list, predictions), columns=["image_id", "label"])
