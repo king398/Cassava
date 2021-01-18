@@ -57,7 +57,7 @@ def categorical_focal_loss_with_label_smoothing(gamma=2.0, alpha=0.25, ls=0.1, c
 	return focal_loss
 
 
-base_model = efn.EfficientNetB3(weights='imagenet', input_shape=(512, 512, 3),include_top=False)
+base_model = efn.EfficientNetB3(weights='imagenet', input_shape=(512, 512, 3), include_top=False)
 
 base_model.trainable = True
 
@@ -68,7 +68,7 @@ model = tf.keras.Sequential([
 	BatchNormalization(),
 	tf.keras.layers.LeakyReLU(),
 	tf.keras.layers.Flatten(),
-  tf.keras.layers.Dense(512),
+	tf.keras.layers.Dense(512),
 	BatchNormalization(),
 
 	tf.keras.layers.LeakyReLU(),
@@ -102,7 +102,10 @@ model = tf.keras.Sequential([
 	tf.keras.layers.LeakyReLU(),
 	tf.keras.layers.Dense(5, activation='softmax')
 ])
-opt = tf.keras.optimizers.SGD(0.03)
+first_decay_steps = 1000
+
+lr = (tf.keras.experimental.CosineDecayRestarts(0.03, first_decay_steps))
+opt = tf.keras.optimizers.SGD(lr)
 model.compile(
 	optimizer=opt,
 	loss=tf.keras.losses.CategoricalCrossentropy(),
@@ -128,4 +131,3 @@ history = model.fit(datagen.flow_from_dataframe(dataframe=train_csv,
                                                                            class_mode="categorical", batch_size=16,
                                                                            subset="validation", shuffle=True))
 model.load_weights(checkpoint_filepath)
-import  numpy as np

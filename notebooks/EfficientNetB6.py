@@ -101,7 +101,7 @@ model = tf.keras.Sequential([
 opt = tf.keras.optimizers.SGD(0.03)
 model.compile(
 	optimizer=opt,
-	loss=tf.keras.losses.CategoricalCrossentropy(),
+	loss=categorical_focal_loss_with_label_smoothing(),
 	metrics=['categorical_accuracy'])
 
 checkpoint_filepath = r"/content/temp/"
