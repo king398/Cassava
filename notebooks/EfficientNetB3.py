@@ -109,7 +109,7 @@ lr = (tf.keras.experimental.CosineDecayRestarts(0.03, first_decay_steps))
 opt = tf.keras.optimizers.SGD(lr)
 model.compile(
 	optimizer=opt,
-	loss=tf.keras.losses.CategoricalCrossentropy(),
+	loss=categorical_focal_loss_with_label_smoothing(),
 	metrics=['categorical_accuracy'])
 
 checkpoint_filepath = r"/content/temp/"
