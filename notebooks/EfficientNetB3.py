@@ -57,7 +57,7 @@ def categorical_focal_loss_with_label_smoothing(gamma=2.0, alpha=0.25, ls=0.1, c
 	return focal_loss
 
 
-base_model = efn.EfficientNetB3(weights='noisy-student', input_shape=(512, 512, 3), include_top=False)
+base_model = efn.EfficientNetB3(weights='noisy-student', input_shape=(512, 512, 3), include_top=True)
 
 base_model.trainable = True
 
@@ -125,7 +125,7 @@ history = model.fit(datagen.flow_from_dataframe(dataframe=train_csv,
                                                 batch_size=16,
                                                 subset="training", shuffle=True),
                     callbacks=[model_checkpoint_callback],
-                    epochs=25, validation_data=datagen.flow_from_dataframe(dataframe=train_csv,
+                    epochs=20, validation_data=datagen.flow_from_dataframe(dataframe=train_csv,
                                                                            directory=r"/content/train_images",
                                                                            x_col="image_id",
                                                                            y_col="label", target_size=(512, 512),
