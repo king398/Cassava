@@ -4,16 +4,20 @@ import os
 import pandas as pd
 import numpy as np
 
-model1 = tf.keras.models.load_model(r"../input/models-gcs/88effnetb3moredata", compile=False)
-model2 = tf.keras.models.load_model(r"../input/models-gcs/88effnetb3custom", compile=False)
-model3 = tf.keras.models.load_model(r"../input/models-gcs/88effnetb3noisyincludetopTrue", compile=False)
+model1 = tf.keras.models.load_model(r"../input/models-gcs/1", compile=False)
+model2 = tf.keras.models.load_model(r"../input/models-gcs/2", compile=False)
+model3 = tf.keras.models.load_model(r"../input/models-gcs/3", compile=False)
+model4 = tf.keras.models.load_model(r"../input/models-gcs/4", compile=False)
+model5 = tf.keras.models.load_model(r"../input/models-gcs/5", compile=False)
+
+import time
 
 path = "../input/cassava-leaf-disease-classification/train_images"
 test_file_list = os.listdir(path)
 predictions = []
 tta_pred = []
 model1_predict_list = []
-tta = 3
+tta = 1
 for filename in tqdm(test_file_list):
 	tta_pred = []
 
@@ -25,11 +29,15 @@ for filename in tqdm(test_file_list):
 		model1_predict = np.argmax(model1.predict(arr, use_multiprocessing=True))
 		model2_predict = np.argmax(model2.predict(arr, use_multiprocessing=True))
 		model3_predict = np.argmax(model3.predict(arr, use_multiprocessing=True))
-		pre = [model1_predict, model2_predict, model3_predict]
-		tta_pred.append(int(max(set(pre), key=pre.count)))
+		model4_predict = np.argmax(model4.predict(arr, use_multiprocessing=True))
+		model5_predict = np.argmax(model5.predict(arr, use_multiprocessing=True))
 
-	print(tta_pred)
-	predictions.append(max(set(tta_pred), key=pre.count))
+		pre = [model1_predict, model2_predict, model3_predict, model4_predict, model5_predict]
+		print(pre)
+		print(filename)
+		time.sleep(1)
+
+	predictions.append(max(set(pre), key=pre.count))
 
 df = pd.DataFrame(zip(test_file_list, predictions), columns=["image_id", "label"])
 df.to_csv("./submission.csv", index=False)
