@@ -28,6 +28,7 @@ for filename in tqdm(test_file_list):
 		pre = [model1_predict, model2_predict, model3_predict]
 		tta_pred.append(int(max(set(pre), key=pre.count)))
 
+	print(tta_pred)
 	predictions.append(max(set(tta_pred), key=pre.count))
 
 df = pd.DataFrame(zip(test_file_list, predictions), columns=["image_id", "label"])

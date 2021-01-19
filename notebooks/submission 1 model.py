@@ -5,6 +5,11 @@ import pandas as pd
 import numpy as np
 
 model1 = tf.keras.models.load_model(r"../input/models-gcs/88effnetb3noisyincludetopTrue", compile=False)
+
+
+
+
+
 path = "../input/cassava-leaf-disease-classification/train_images"
 test_file_list = os.listdir(path)
 predictions = []
