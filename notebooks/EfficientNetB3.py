@@ -7,7 +7,7 @@ import keras.backend as K
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 import efficientnet.keras as efn
 import tensorflow_addons as tfa
-from sklearn.model_selection import KFold
+from sklearn.model_selection import StratifiedKFold
 
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
@@ -16,7 +16,7 @@ datagen = ImageDataGenerator(rescale=1. / 255, validation_split=0.2, horizontal_
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 
-base_model = efn.EfficientNetB3(weights='noisy-student',input_shape=(512,512,3), include_top=False)
+base_model = efn.EfficientNetB3(weights='noisy-student',input_shape=(512,512,3), include_top=True)
 
 base_model.trainable = True
 
@@ -66,7 +66,7 @@ fold_number = 0
 
 n_splits = 5
 oof_accuracy = []
-skf = KFold(n_splits=n_splits)
+skf = StratifiedKFold(n_splits=n_splits)
 
 first_decay_steps = 1000
 
@@ -94,7 +94,7 @@ for train_index, val_index in skf.split(train_csv["image_id"], train_csv["label"
 	                                                batch_size=16,
 	                                                subset="training", shuffle=True),
 	                    callbacks=[model_checkpoint_callback],
-	                    epochs=3, validation_data=datagen.flow_from_dataframe(dataframe=val_set,
+	                    epochs=5, validation_data=datagen.flow_from_dataframe(dataframe=val_set,
 	                                                                           directory=r"/content/train_images",
 	                                                                           x_col="image_id",
 	                                                                           y_col="label", target_size=(512, 512),
@@ -107,13 +107,3 @@ for train_index, val_index in skf.split(train_csv["image_id"], train_csv["label"
 		print("Training finished!")
 	model.load_weights(checkpoint_filepath)
 	model.save(r"/content/models/" + str(fold_number), include_optimizer=False)
-model1 = tf.keras.models.load_model("/content/models/1")
-datagen = ImageDataGenerator(rescale=1. / 255, validation_split=0.2, horizontal_flip=True)
-train_csv = pd.read_csv(r"/content/train.csv")
-train_csv["label"] = train_csv["label"].astype(str)
-model.evaluate(datagen.flow_from_dataframe(dataframe=train_csv,
-                                                                directory=r"/content/train_images",
-                                                                x_col="image_id",
-                                                                y_col="label", target_size=(512, 512),
-                                                                class_mode="categorical", batch_size=32,
-                                                                subset="validation", shuffle=True))
