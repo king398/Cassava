@@ -4,13 +4,8 @@ import os
 import pandas as pd
 import numpy as np
 
-model1 = tf.keras.models.load_model(r"../input/models-gcs/88effnetb3noisyincludetopTrue", compile=False)
-
-
-
-
-
-path = "../input/cassava-leaf-disease-classification/train_images"
+model1 = tf.keras.models.load_model(r"../input/models-gcs/8881effnetb3labelsmoothing", compile=False)
+path = "../input/cassava-leaf-disease-classification/test_images"
 test_file_list = os.listdir(path)
 predictions = []
 model1_predict_list = []
@@ -22,7 +17,6 @@ for filename in tqdm(test_file_list):
 	model1_predict = np.argmax(model1.predict(arr))
 
 	pre = [model1_predict]
-	print(pre)
 	predictions.append(int(max(set(pre), key=pre.count)))
 
 df = pd.DataFrame(zip(test_file_list, predictions), columns=["image_id", "label"])
