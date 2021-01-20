@@ -4,7 +4,9 @@ import os
 import pandas as pd
 import numpy as np
 
-model1 = tf.keras.models.load_model(r"../input/models-gcs/8881effnetb3labelsmoothing", compile=False)
+model1 = tf.keras.models.load_model(r"../input/models-gcs/89effb3", compile=False)
+
+
 path = "../input/cassava-leaf-disease-classification/test_images"
 test_file_list = os.listdir(path)
 predictions = []
@@ -22,4 +24,3 @@ for filename in tqdm(test_file_list):
 df = pd.DataFrame(zip(test_file_list, predictions), columns=["image_id", "label"])
 df.to_csv("./submission.csv", index=False)
 print(df)
-
