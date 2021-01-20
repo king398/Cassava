@@ -8,15 +8,16 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 import efficientnet.keras as efn
 import tensorflow_addons as tfa
 from sklearn.model_selection import StratifiedKFold
-from tf2cv.model_provider import get_model as tf2cv_get_model
+	from tf2cv.model_provider import get_model as tf2cv_get_model
 
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
+tf.keras.regularizers.l2(l2=0.01)
 datagen = ImageDataGenerator(rescale=1. / 255, validation_split=0.2, horizontal_flip=True)
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 
-base_model = tf2cv_get_model("resnext50_32x4d", pretrained=False, data_format="channels_last")
+base_model = tf2cv_get_model("seresnet50", pretrained=True, data_format="channels_first")
 
 base_model.trainable = True
 
@@ -60,11 +61,16 @@ model = tf.keras.Sequential([
 	tf.keras.layers.LeakyReLU(),
 	tf.keras.layers.Dense(8),
 	tf.keras.layers.LeakyReLU(),
-	tf.keras.layers.Dense(5, activation='softmax', dtype='float32')
+	tf.keras.layers.Dense(5, dtype='float32'),
+	tf.keras.layers.Softmax()
 ])
-tf.keras.regularizers.l2(l2=0.01)
+fold_number = 0
 
-first_decay_steps = 1000
+n_splits = 5
+oof_accuracy = []
+skf = StratifiedKFold(n_splits=n_splits)
+
+first_decay_steps = 500
 
 lr = (tf.keras.experimental.CosineDecayRestarts(0.04, first_decay_steps))
 opt = tf.keras.optimizers.SGD(lr)

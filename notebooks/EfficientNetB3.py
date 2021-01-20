@@ -28,6 +28,10 @@ model = tf.keras.Sequential([
 	BatchNormalization(),
 	tf.keras.layers.LeakyReLU(),
 	tf.keras.layers.Flatten(),
+	tf.keras.layers.Dense(1024),
+	BatchNormalization(),
+
+	tf.keras.layers.LeakyReLU(),
 	tf.keras.layers.Dense(512),
 	BatchNormalization(),
 
@@ -60,7 +64,8 @@ model = tf.keras.Sequential([
 	tf.keras.layers.LeakyReLU(),
 	tf.keras.layers.Dense(8),
 	tf.keras.layers.LeakyReLU(),
-	tf.keras.layers.Dense(5, activation='softmax', dtype='float32')
+	tf.keras.layers.Dense(5, dtype='float32'),
+	tf.keras.layers.Softmax()
 ])
 fold_number = 0
 
@@ -68,13 +73,15 @@ n_splits = 5
 oof_accuracy = []
 skf = StratifiedKFold(n_splits=n_splits)
 
-first_decay_steps = 1000
+first_decay_steps = 500
+lr = (tf.keras.experimental.CosineDecayRestarts(0.04, first_decay_steps))
 
-lr = (tf.keras.experimental.CosineDecayRestarts(0.002, first_decay_steps))
-opt = tf.keras.optimizers.Adagrad(lr)
+radam = tfa.optimizers.RectifiedAdam(learning_rate=lr)
+ranger = tfa.optimizers.Lookahead(radam, sync_period=6, slow_step_size=0.5)
+opt = tf.keras.optimizers.SGD(lr)
 model.compile(
 	optimizer=opt,
-	loss=tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.2),
+	loss=tf.keras.losses.CategoricalCrossentropy(),
 	metrics=['categorical_accuracy'])
 
 checkpoint_filepath = r"/content/temp/"
