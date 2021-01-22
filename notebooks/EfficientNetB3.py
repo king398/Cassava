@@ -8,11 +8,21 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 import efficientnet.keras as efn
 import tensorflow_addons as tfa
 from sklearn.model_selection import StratifiedKFold
+import numpy as np
 
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
 tf.keras.regularizers.l2(l2=0.01)
-datagen = ImageDataGenerator(rescale=1. / 255, validation_split=0.2, horizontal_flip=True)
+
+
+def augment(image):
+	image = np.array(image)
+	image = tf.image.random_flip_left_right(image)
+	image = tf.image.random_flip_up_down(image)
+	return image
+
+
+datagen = ImageDataGenerator(rescale=1. / 255, validation_split=0.2, preprocessing_function=augment)
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 
