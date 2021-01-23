@@ -18,7 +18,7 @@ datagen = ImageDataGenerator(rescale=1. / 255, validation_split=0.2, horizontal_
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 
-base_model = tf2cv_get_model("resnext101_32x4d", pretrained=False, data_format="channels_last")
+base_model = tf2cv_get_model("seresnext101_32x4d", pretrained=False, data_format="channels_last")
 
 base_model.trainable = True
 
@@ -90,33 +90,18 @@ model_checkpoint_callback = ModelCheckpoint(
 	mode='max',
 	save_best_only=True)
 
-for train_index, val_index in skf.split(train_csv["image_id"], train_csv["label"]):
-	train_set = train_csv.loc[train_index]
-	val_set = train_csv.loc[val_index]
-	train = datagen.flow_from_dataframe(dataframe=train_set,
-	                                    directory=r"/content/train_images", x_col="image_id",
-	                                    y_col="label", target_size=(512, 512), class_mode="categorical",
-	                                    batch_size=16,
-	                                    subset="training", shuffle=True)
-	counts = Counter(train.classes)
-	print(counts)
+history = model.fit(datagen.flow_from_dataframe(dataframe=train_csv,
+                                                directory=r"/content/train_images", x_col="image_id",
+                                                y_col="label", target_size=(512, 512), class_mode="categorical",
+                                                batch_size=12,
+                                                subset="training", shuffle=True),
+                    callbacks=[model_checkpoint_callback],
+                    epochs=5, validation_data=datagen.flow_from_dataframe(dataframe=train_csv,
+                                                                          directory=r"/content/train_images",
+                                                                          x_col="image_id",
+                                                                          y_col="label", target_size=(800, 600),
+                                                                          class_mode="categorical", batch_size=12,
 
-	history = model.fit(datagen.flow_from_dataframe(dataframe=train_set,
-	                                                directory=r"/content/train_images", x_col="image_id",
-	                                                y_col="label", target_size=(512, 512), class_mode="categorical",
-	                                                batch_size=12,
-	                                                subset="training", shuffle=True),
-	                    callbacks=[model_checkpoint_callback],
-	                    epochs=5, validation_data=datagen.flow_from_dataframe(dataframe=val_set,
-	                                                                          directory=r"/content/train_images",
-	                                                                          x_col="image_id",
-	                                                                          y_col="label", target_size=(512, 512),
-	                                                                          class_mode="categorical", batch_size=12,
+                                                                          subset="validation", shuffle=True))
 
-	                                                                          subset="validation", shuffle=True))
-	oof_accuracy.append(max(history.history["val_categorical_accuracy"]))
-	fold_number += 1
-	if fold_number == n_splits:
-		print("Training finished!")
-	model.load_weights(checkpoint_filepath)
-	model.save(r"/content/models/" + str(fold_number), include_optimizer=False)
+model.load_weights(checkpoint_filepath)

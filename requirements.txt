@@ -1,4 +1,4 @@
-tensorflow-gpu~=2.4.0
+tensorflow-gpu~=2.4.0rc0
 tqdm~=4.51.0
 opencv-python~=4.4.0.46
 numpy~=1.19.3
@@ -7,3 +7,5 @@ pandas~=1.1.4
 scikit-learn~=0.23.2
 matplotlib~=3.3.2
 keras~=2.4.3
+efficientnet~=1.1.1
+tf2cv~=0.0.13
