@@ -26,7 +26,7 @@ oof_accuracy = []
 skf = StratifiedKFold(n_splits=n_splits)
 
 first_decay_steps = 500
-lr = (tf.keras.experimental.CosineDecayRestarts(0.04, first_decay_steps))
+lr = (tf.keras.experimental.CosineDecayRestarts(0.03, first_decay_steps))
 opt = tf.keras.optimizers.SGD(lr)
 
 model = tf.keras.Sequential([
@@ -46,7 +46,6 @@ model.compile(
 	loss=tf.keras.losses.CategoricalCrossentropy(),
 	metrics=['categorical_accuracy'])
 
-
 checkpoint_filepath = r"/content/temp/"
 model_checkpoint_callback = ModelCheckpoint(
 	filepath=checkpoint_filepath,
@@ -55,21 +54,19 @@ model_checkpoint_callback = ModelCheckpoint(
 	mode='max',
 	save_best_only=True)
 
-tf.keras.backend.clear_session()
-
 history = model.fit(datagen.flow_from_dataframe(dataframe=train_csv,
                                                 directory=r"/content/train_images", x_col="image_id",
                                                 y_col="label", target_size=(800, 600), class_mode="categorical",
                                                 batch_size=16,
                                                 subset="training", shuffle=True),
                     callbacks=[model_checkpoint_callback],
-                    epochs=15, validation_data=datagen.flow_from_dataframe(dataframe=val_set,
-                                                                          directory=r"/content/train_images",
-                                                                          x_col="image_id",
-                                                                          y_col="label", target_size=(800, 600),
-                                                                          class_mode="categorical", batch_size=16,
+                    epochs=15, validation_data=datagen.flow_from_dataframe(dataframe=train_csv,
+                                                                           directory=r"/content/train_images",
+                                                                           x_col="image_id",
+                                                                           y_col="label", target_size=(800, 600),
+                                                                           class_mode="categorical", batch_size=16,
 
-                                                                          subset="validation", shuffle=True))
+                                                                           subset="validation", shuffle=True))
 oof_accuracy.append(max(history.history["val_categorical_accuracy"]))
 fold_number += 1
 if fold_number == n_splits:

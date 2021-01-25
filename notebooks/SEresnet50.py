@@ -1,3 +1,4 @@
+
 import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.mixed_precision import experimental as mixed_precision
@@ -76,7 +77,7 @@ lr = (tf.keras.experimental.CosineDecayRestarts(0.03, first_decay_steps))
 
 radam = tfa.optimizers.RectifiedAdam(learning_rate=lr)
 ranger = tfa.optimizers.Lookahead(radam, sync_period=6, slow_step_size=0.5)
-opt = tf.keras.optimizers.SGD(lr)
+opt = tf.keras.optimizers.Adamax(lr)
 model.compile(
 	optimizer=opt,
 	loss=tf.keras.losses.CategoricalCrossentropy(),
@@ -96,7 +97,7 @@ history = model.fit(datagen.flow_from_dataframe(dataframe=train_csv,
                                                 batch_size=12,
                                                 subset="training", shuffle=True),
                     callbacks=[model_checkpoint_callback],
-                    epochs=5, validation_data=datagen.flow_from_dataframe(dataframe=train_csv,
+                    epochs=15, validation_data=datagen.flow_from_dataframe(dataframe=train_csv,
                                                                           directory=r"/content/train_images",
                                                                           x_col="image_id",
                                                                           y_col="label", target_size=(800, 600),
