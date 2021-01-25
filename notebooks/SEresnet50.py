@@ -19,7 +19,7 @@ datagen = ImageDataGenerator(rescale=1. / 255, validation_split=0.2, horizontal_
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 
-base_model = tf2cv_get_model("seresnext101_32x4d", pretrained=False, data_format="channels_last")
+base_model = tf2cv_get_model("resnext101_32x4d", pretrained=False, data_format="channels_last")
 
 base_model.trainable = True
 
