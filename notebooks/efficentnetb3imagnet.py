@@ -1,29 +1,86 @@
 import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from tensorflow.keras import mixed_precision
+from tensorflow.keras.mixed_precision import experimental as mixed_precision
 import pandas as pd
 from tensorflow.keras.layers import Flatten, Dense, LeakyReLU, BatchNormalization, Dropout, PReLU
 from tensorflow.keras.callbacks import ModelCheckpoint
 import efficientnet.keras as efn
-from sklearn.model_selection import StratifiedKFold
-import datetime
+import tensorflow_addons as tfa
+import albumentations as A
 import numpy as np
 import cv2
-import albumentations as A
+import matplotlib.pyplot as plt
+import random
+from pylab import rcParams
+import os
+import math
+from sklearn.model_selection import train_test_split
 
 physical_devices = tf.config.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
-
 policy = mixed_precision.Policy('mixed_float16')
-mixed_precision.set_global_policy(policy)
-
+mixed_precision.set_policy(policy)
 tf.keras.regularizers.l2(l2=0.01)
+
+datagen = ImageDataGenerator(rescale=1. / 255, horizontal_flip=True)
+train_csv = pd.read_csv(r"F:/Pycharm_projects/Kaggle Cassava/data/train.csv")
+train_csv["label"] = train_csv["label"].astype(str)
+
+base_model = efn.EfficientNetB3(weights='noisy-student', input_shape=(512, 512, 3), include_top=True)
+
+train = train_csv.iloc[:int(len(train_csv) * 0.8), :]
+test = train_csv.iloc[int(len(train_csv) * 0.8):, :]
+print((len(train), len(test)))
+base_model.trainable = True
+
+fold_number = 0
+
+n_splits = 5
+oof_accuracy = []
+
+first_decay_steps = 500
+lr = (tf.keras.experimental.CosineDecayRestarts(0.04, first_decay_steps))
+opt = tf.keras.optimizers.SGD(lr)
+
+model = tf.keras.Sequential([
+	tf.keras.layers.experimental.preprocessing.RandomCrop(height=512, width=512),
+
+	tf.keras.layers.Input((512, 512, 3)),
+	tf.keras.layers.BatchNormalization(renorm=True),
+	base_model,
+	BatchNormalization(),
+	tf.keras.layers.LeakyReLU(),
+	tf.keras.layers.Flatten(),
+	tf.keras.layers.MultiHeadAttention(),
+
+	tf.keras.layers.Dense(5, activation='softmax', dtype='float32')
+])
+
+model.compile(
+	optimizer=opt,
+	loss=tf.keras.losses.CategoricalCrossentropy(),
+	metrics=['categorical_accuracy'])
+
+checkpoint_filepath = r"/content/temp/"
+model_checkpoint_callback = ModelCheckpoint(
+	filepath=checkpoint_filepath,
+	save_weights_only=True,
+	monitor='val_categorical_accuracy',
+	mode='max',
+	save_best_only=True)
+
+
+class BaseConfig(object):
+	SEED = 101
+	TRAIN_DF = r"F:\Pycharm_projects\Kaggle Cassava\data\train.csv"
+	TRAIN_IMG_PATH = r"F:/Pycharm_projects/Kaggle Cassava/data/train_images/"
+	TEST_IMG_PATH = r'F:/Pycharm_projects/Kaggle Cassava/data/test_images/'
 
 
 def albu_transforms_train(data_resize):
 	return A.Compose([
 		A.ToFloat(),
-		A.Resize(data_resize, data_resize),
+		A.Resize(800, 800),
 	], p=1.)
 
 
@@ -80,6 +137,39 @@ def CutMix(image, label, DIM, PROBABILITY=1.0):
 	return image2, label2
 
 
+def plot_imgs(dataset_show, row, col):
+	rcParams['figure.figsize'] = 20, 10
+	for i in range(row):
+		f, ax = plt.subplots(1, col)
+		for p in range(col):
+			idx = np.random.randint(0, len(dataset_show))
+			img, label = dataset_show[idx]
+			ax[p].grid(False)
+			ax[p].imshow(img[0])
+			ax[p].set_title(idx)
+	plt.show()
+
+
+def visulize(path, n_images, is_random=True, figsize=(16, 16)):
+	plt.figure(figsize=figsize)
+
+	w = int(n_images ** .5)
+	h = math.ceil(n_images / w)
+
+	image_names = os.listdir(path)
+	for i in range(n_images):
+		image_name = image_names[i]
+		if is_random:
+			image_name = random.choice(image_names)
+
+		img = cv2.imread(os.path.join(path, image_name))
+		plt.subplot(h, w, i + 1)
+		plt.imshow(img)
+		plt.xticks([])
+		plt.yticks([])
+	plt.show()
+
+
 class CassavaGenerator(tf.keras.utils.Sequence):
 	def __init__(self, img_path, data, batch_size,
 	             dim, shuffle=True, transform=None,
@@ -112,6 +202,7 @@ class CassavaGenerator(tf.keras.utils.Sequence):
 		for i, k in enumerate(idx):
 			# load the image file using cv2
 			image = cv2.imread(self.img_path + self.data['image_id'][k])
+
 			image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
 			res = self.augment(image=image)
@@ -133,70 +224,20 @@ class CassavaGenerator(tf.keras.utils.Sequence):
 			np.random.shuffle(self.indices)
 
 
+check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train, 8,
+                              (800, 800, 3), shuffle=True,
+                              transform=albu_transforms_train(800), use_cutmix=True)
+
 plot_imgs(check_gens, row=4, col=3)
-datagen = ImageDataGenerator(rescale=1. / 255, validation_split=0.2, horizontal_flip=True)
-train_csv = pd.read_csv(r"F:\Pycharm_projects\Kaggle Cassava\data\train.csv")
-train_csv["label"] = train_csv["label"].astype(str)
-base_model = efn.EfficientNetB3(weights='noisy-student', input_shape=(512, 512, 3), include_top=True)
-
-base_model.trainable = True
-
-fold_number = 0
-
-n_splits = 5
-oof_accuracy = []
-skf = StratifiedKFold(n_splits=n_splits)
-first_decay_steps = 500
-lr = (tf.keras.experimental.CosineDecayRestarts(0.03, first_decay_steps))
-opt = tf.keras.optimizers.SGD(lr)
-
-
-check_gens = CassavaGenerator(r"F:\Pycharm_projects\Kaggle Cassava\data\train_images", train_csv
-                              , 20,
-                              (128, 128, 3), shuffle=True,
-                              use_mixup=False, use_cutmix=True,
-                              use_fmix=False, transform=albu_transforms_train(128))
-model = tf.keras.Sequential([
-	tf.keras.layers.experimental.preprocessing.RandomCrop(height=512, width=512),
-
-	tf.keras.layers.Input((512, 512, 3)),
-	tf.keras.layers.BatchNormalization(renorm=True),
-	base_model,
-	BatchNormalization(),
-	tf.keras.layers.LeakyReLU(),
-	tf.keras.layers.Flatten(),
-
-	tf.keras.layers.Dense(5, activation='softmax', dtype='float32')
-])
-model.compile(
-	optimizer=opt,
-	loss=tf.keras.losses.CategoricalCrossentropy(),
-	metrics=['categorical_accuracy'])
-
-checkpoint_filepath = r"F:\Pycharm_projects\Kaggle Cassava\temp/"
-model_checkpoint_callback = ModelCheckpoint(
-	filepath=checkpoint_filepath,
-	save_weights_only=True,
-	monitor='val_categorical_accuracy',
-	mode='max',
-	save_best_only=True)
-
-log_dir = "F:\Pycharm_projects\Kaggle Cassava\logs"
-tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
-history = model.fit(datagen.flow_from_dataframe(dataframe=train_csv,
-                                                directory=r"F:\Pycharm_projects\Kaggle Cassava\data\train_images",
-                                                x_col="image_id",
-                                                y_col="label", target_size=(800, 600), class_mode="categorical",
-                                                batch_size=6,
-                                                subset="training", shuffle=True),
-                    callbacks=[model_checkpoint_callback, tensorboard_callback],
-                    epochs=15, validation_data=datagen.flow_from_dataframe(dataframe=train_csv,
-                                                                           directory=r"F:\Pycharm_projects\Kaggle Cassava\data\train_images",
+history = model.fit(check_gens,
+                    callbacks=[model_checkpoint_callback],
+                    epochs=25, validation_data=datagen.flow_from_dataframe(dataframe=test,
+                                                                           directory=r"F:/Pycharm_projects/Kaggle Cassava/data/train_images/",
                                                                            x_col="image_id",
                                                                            y_col="label", target_size=(800, 600),
-                                                                           class_mode="categorical", batch_size=6,
+                                                                           class_mode="categorical", batch_size=12,
 
-                                                                           subset="validation", shuffle=True))
+                                                                           shuffle=True))
 oof_accuracy.append(max(history.history["val_categorical_accuracy"]))
 fold_number += 1
 if fold_number == n_splits:
