@@ -26,7 +26,7 @@ datagen = ImageDataGenerator(rescale=1. / 255, horizontal_flip=True)
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 
-base_model = tf.keras.applications.ResNet50(include_top=False)
+base_model = tf.keras.applications.ResNet101(include_top=False, weights="imagenet", input_shape=(512, 512, 3))
 
 train = train_csv.iloc[:int(len(train_csv) * 0.8), :]
 test = train_csv.iloc[int(len(train_csv) * 0.8):, :]
@@ -47,8 +47,8 @@ model = tf.keras.Sequential([
 	tf.keras.layers.Input((512, 512, 3)),
 
 	tf.keras.layers.BatchNormalization(renorm=True),
-	tfa.layers.WeightNormalization(base_model),
-	BatchNormalization(),
+	base_model,
+	BatchNormalization(trainable=False),
 	tf.keras.layers.LeakyReLU(),
 	tf.keras.layers.Flatten(),
 	tf.keras.layers.Dense(5, activation='softmax', dtype='float32')
@@ -90,7 +90,7 @@ def albu_transforms_valid(data_resize):
 	], p=1.)
 
 
-def CutMix(image, label, DIM, PROBABILITY=1.0):
+def CutMix(image, label, DIM, PROBABILITY=0.6):
 	# input image - is a batch of images of size [n,dim,dim,3] not a single image of [dim,dim,3]
 	# output - a batch of images with cutmix applied
 	CLASSES = 5

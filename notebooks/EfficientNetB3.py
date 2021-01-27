@@ -25,7 +25,7 @@ datagen = ImageDataGenerator(rescale=1. / 255, horizontal_flip=True)
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 
-base_model = efn.EfficientNetB4(weights='noisy-student', input_shape=(512, 512, 3), include_top=False)
+base_model = efn.EfficientNetB3(weights='noisy-student', input_shape=(512, 512, 3), include_top=True)
 
 train = train_csv.iloc[:int(len(train_csv) * 0.8), :]
 test = train_csv.iloc[int(len(train_csv) * 0.8):, :]
@@ -50,7 +50,6 @@ model = tf.keras.Sequential([
 	BatchNormalization(),
 	tf.keras.layers.LeakyReLU(),
 	tf.keras.layers.Flatten(),
-	tfa.layers.MultiHeadAttention(head_size=128, num_heads=12),
 
 	tf.keras.layers.Dense(5, activation='softmax', dtype='float32')
 ])
@@ -80,6 +79,7 @@ def albu_transforms_train(data_resize):
 	return A.Compose([
 		A.ToFloat(),
 		A.Resize(800, 800),
+		A.HorizontalFlip()
 	], p=1.)
 
 
@@ -91,7 +91,7 @@ def albu_transforms_valid(data_resize):
 	], p=1.)
 
 
-def CutMix(image, label, DIM, PROBABILITY=1.0):
+def CutMix(image, label, DIM, PROBABILITY=0.8):
 	# input image - is a batch of images of size [n,dim,dim,3] not a single image of [dim,dim,3]
 	# output - a batch of images with cutmix applied
 	CLASSES = 5

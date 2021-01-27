@@ -92,7 +92,7 @@ def albu_transforms_valid(data_resize):
 	], p=1.)
 
 
-def CutMix(image, label, DIM, PROBABILITY=1.0):
+def CutMix(image, label, DIM, PROBABILITY=0.6):
 	# input image - is a batch of images of size [n,dim,dim,3] not a single image of [dim,dim,3]
 	# output - a batch of images with cutmix applied
 	CLASSES = 5
