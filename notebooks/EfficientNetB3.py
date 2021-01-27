@@ -47,7 +47,7 @@ model = tf.keras.Sequential([
 	tf.keras.layers.Input((512, 512, 3)),
 	tf.keras.layers.BatchNormalization(renorm=True),
 	base_model,
-	BatchNormalization(),
+	BatchNormalization(trainable=False),
 	tf.keras.layers.LeakyReLU(),
 	tf.keras.layers.Flatten(),
 
