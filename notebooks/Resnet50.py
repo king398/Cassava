@@ -5,7 +5,6 @@ import pandas as pd
 from tensorflow.keras.layers import Flatten, Dense, LeakyReLU, BatchNormalization, Dropout, PReLU
 from tensorflow.keras.callbacks import ModelCheckpoint
 import efficientnet.keras as efn
-import tensorflow_addons as tfa
 import albumentations as A
 import numpy as np
 import cv2
@@ -14,19 +13,19 @@ import random
 from pylab import rcParams
 import os
 import math
-from sklearn.model_selection import train_test_split
-import tensorflow_addons as tfa
 from tf2cv.model_provider import get_model as tf2cv_get_model
 
+physical_devices = tf.config.list_physical_devices('GPU')
+tf.config.experimental.set_memory_growth(physical_devices[0], True)
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
 tf.keras.regularizers.l2(l2=0.01)
 
 datagen = ImageDataGenerator(rescale=1. / 255, horizontal_flip=True)
-train_csv = pd.read_csv(r"/content/train.csv")
+train_csv = pd.read_csv(r"F:\Pycharm_projects\Kaggle Cassava\data\train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 
-base_model = tf.keras.applications.ResNet101(include_top=False, weights="imagenet", input_shape=(512, 512, 3))
+base_model = tf2cv_get_model("resnext50_32x4d", pretrained=False, data_format="channels_last")
 
 train = train_csv.iloc[:int(len(train_csv) * 0.8), :]
 test = train_csv.iloc[int(len(train_csv) * 0.8):, :]
@@ -41,16 +40,17 @@ oof_accuracy = []
 first_decay_steps = 500
 lr = (tf.keras.experimental.CosineDecayRestarts(0.04, first_decay_steps))
 opt = tf.keras.optimizers.SGD(lr)
+
 model = tf.keras.Sequential([
 	tf.keras.layers.experimental.preprocessing.RandomCrop(height=512, width=512),
 
 	tf.keras.layers.Input((512, 512, 3)),
-
 	tf.keras.layers.BatchNormalization(renorm=True),
 	base_model,
-	BatchNormalization(trainable=False),
+	BatchNormalization(),
 	tf.keras.layers.LeakyReLU(),
 	tf.keras.layers.Flatten(),
+
 	tf.keras.layers.Dense(5, activation='softmax', dtype='float32')
 ])
 model.compile(
@@ -69,8 +69,8 @@ model_checkpoint_callback = ModelCheckpoint(
 
 class BaseConfig(object):
 	SEED = 101
-	TRAIN_DF = '/content/train.csv/'
-	TRAIN_IMG_PATH = '/content/train_images/'
+	TRAIN_DF = r"F:\Pycharm_projects\Kaggle Cassava\data\train.csv"
+	TRAIN_IMG_PATH = r'F:/Pycharm_projects/Kaggle Cassava/data/train_images/'
 	TEST_IMG_PATH = '/content/test_images/'
 	CLASS_MAP = '/content/label_num_to_disease_map.json'
 
@@ -79,6 +79,7 @@ def albu_transforms_train(data_resize):
 	return A.Compose([
 		A.ToFloat(),
 		A.Resize(800, 800),
+		A.HorizontalFlip()
 	], p=1.)
 
 
@@ -90,7 +91,7 @@ def albu_transforms_valid(data_resize):
 	], p=1.)
 
 
-def CutMix(image, label, DIM, PROBABILITY=0.6):
+def CutMix(image, label, DIM, PROBABILITY=0.8):
 	# input image - is a batch of images of size [n,dim,dim,3] not a single image of [dim,dim,3]
 	# output - a batch of images with cutmix applied
 	CLASSES = 5
@@ -146,6 +147,35 @@ def plot_imgs(dataset_show, row, col):
 			ax[p].imshow(img[0])
 			ax[p].set_title(idx)
 	plt.show()
+
+
+def MixUp(image, label, DIM, PROBABILITY=0.8):
+	# input image - is a batch of images of size [n,dim,dim,3] not a single image of [dim,dim,3]
+	# output - a batch of images with mixup applied
+	CLASSES = 5
+
+	imgs = [];
+	labs = []
+	for j in range(len(image)):
+		# DO MIXUP WITH PROBABILITY DEFINED ABOVE
+		P = tf.cast(tf.random.uniform([], 0, 1) <= PROBABILITY, tf.float32)
+
+		# CHOOSE RANDOM
+		k = tf.cast(tf.random.uniform([], 0, len(image)), tf.int32)
+		a = tf.random.uniform([], 0, 1) * P  # this is beta dist with alpha=1.0
+
+		# MAKE MIXUP IMAGE
+		img1 = image[j,]
+		img2 = image[k,]
+		imgs.append((1 - a) * img1 + a * img2)
+
+		# MAKE CUTMIX LABEL
+		labs.append((1 - a) * label[j] + a * label[k])
+
+	# RESHAPE HACK SO TPU COMPILER KNOWS SHAPE OF OUTPUT TENSOR (maybe use Python typing instead?)
+	image2 = tf.reshape(tf.stack(imgs), (len(image), DIM, DIM, 3))
+	label2 = tf.reshape(tf.stack(labs), (len(image), CLASSES))
+	return image2, label2
 
 
 def visulize(path, n_images, is_random=True, figsize=(16, 16)):
@@ -213,6 +243,8 @@ class CassavaGenerator(tf.keras.utils.Sequence):
 		# cutmix
 		if self.use_cutmix:
 			Data, Target = CutMix(Data, Target, self.dim[0])
+		if self.use_mixup:
+			Data, Target = MixUp(Data, Target, self.dim[0])
 
 		return Data, Target
 
@@ -222,15 +254,15 @@ class CassavaGenerator(tf.keras.utils.Sequence):
 			np.random.shuffle(self.indices)
 
 
-check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train, 16,
+check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train, 12,
                               (800, 800, 3), shuffle=True,
-                              transform=albu_transforms_train(800), use_cutmix=True)
+                              transform=albu_transforms_train(800), use_cutmix=True, use_mixup=True)
 
 plot_imgs(check_gens, row=4, col=3)
 history = model.fit(check_gens,
                     callbacks=[model_checkpoint_callback],
                     epochs=25, validation_data=datagen.flow_from_dataframe(dataframe=test,
-                                                                           directory=r"/content/train_images",
+                                                                           directory=r"F:\Pycharm_projects\Kaggle Cassava\data\train_images",
                                                                            x_col="image_id",
                                                                            y_col="label", target_size=(800, 600),
                                                                            class_mode="categorical", batch_size=12,
@@ -241,4 +273,3 @@ fold_number += 1
 if fold_number == n_splits:
 	print("Training finished!")
 model.load_weights(checkpoint_filepath)
-model.save(r"/content/models/" + str(fold_number), include_optimizer=False, overwrite=True)

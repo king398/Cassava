@@ -4,7 +4,6 @@ from tensorflow.keras.mixed_precision import experimental as mixed_precision
 import pandas as pd
 from tensorflow.keras.layers import Flatten, Dense, LeakyReLU, BatchNormalization, Dropout, PReLU
 from tensorflow.keras.callbacks import ModelCheckpoint
-import tensorflow_addons as tfa
 import albumentations as A
 import numpy as np
 import cv2
@@ -16,8 +15,9 @@ import math
 
 from vit_keras import vit, utils
 
-policy = mixed_precision.Policy('mixed_float16')
-mixed_precision.set_policy(policy)
+physical_devices = tf.config.list_physical_devices('GPU')
+tf.config.experimental.set_memory_growth(physical_devices[0], True)
+
 tf.keras.regularizers.l2(l2=0.01)
 
 datagen = ImageDataGenerator(rescale=1. / 255, horizontal_flip=True)
@@ -28,7 +28,7 @@ base_model = vit.vit_l32(
 	image_size=image_size,
 	activation=None,
 	pretrained=False,
-	include_top=False,
+	include_top=True,
 	pretrained_top=False,
 	classes=5
 )
@@ -76,7 +76,7 @@ model_checkpoint_callback = ModelCheckpoint(
 class BaseConfig(object):
 	SEED = 101
 	TRAIN_DF = r'F:\Pycharm_projects\Kaggle Cassava\data\train.csv'
-	TRAIN_IMG_PATH = r'F:\Pycharm_projects\Kaggle Cassava\data\train_images'
+	TRAIN_IMG_PATH = r"F:/Pycharm_projects/Kaggle Cassava/data/train_images/"
 
 
 def albu_transforms_train(data_resize):
@@ -234,8 +234,8 @@ check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train, 8,
 plot_imgs(check_gens, row=4, col=3)
 history = model.fit(check_gens,
                     callbacks=[model_checkpoint_callback],
-                    epochs=25, validation_data=datagen.flow_from_dataframe(dataframe=test,
-                                                                           directory=r"/content/train_images",
+                    epochs=15, validation_data=datagen.flow_from_dataframe(dataframe=test,
+                                                                           directory=r"F:\Pycharm_projects\Kaggle Cassava\data\train_images",
                                                                            x_col="image_id",
                                                                            y_col="label", target_size=(800, 600),
                                                                            class_mode="categorical", batch_size=12,
