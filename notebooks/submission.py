@@ -7,6 +7,7 @@ import numpy as np
 model1 = tf.keras.models.load_model(r"../input/models-gcs/8834cutmix", compile=False)
 model4 = tf.keras.models.load_model(r"../input/models-gcs/8850cutflip", compile=False)
 model5 = tf.keras.models.load_model(r"../input/models-gcs/89cutmix", compile=False)
+
 path = "../input/cassava-leaf-disease-classification/test_images"
 test_file_list = os.listdir(path)
 predictions = []
@@ -25,10 +26,10 @@ for filename in tqdm(test_file_list):
 		model1_predict = np.argmax(model1.predict(arr, use_multiprocessing=True))
 		model4_predict = np.argmax(model4.predict(arr, use_multiprocessing=True))
 		model5_predict = np.argmax(model5.predict(arr, use_multiprocessing=True))
+		print(model1.predict(arr, use_multiprocessing=True))
+		pre = [model1_predict, model4_predict, model5_predict]
 
-		pre = [model1_predict,  model4_predict, model5_predict]
-
-		predictions.append(max(set(pre), key=pre.count))
+	predictions.append(max(set(pre), key=pre.count))
 
 df = pd.DataFrame(zip(test_file_list, predictions), columns=["image_id", "label"])
 df.to_csv("./submission.csv", index=False)

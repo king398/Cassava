@@ -16,7 +16,7 @@ import os
 import math
 from sklearn.model_selection import train_test_split
 import tensorflow_addons as tfa
-
+from vit_keras import vit
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
 tf.keras.regularizers.l2(l2=0.01)
