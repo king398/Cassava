@@ -26,7 +26,7 @@ datagen = ImageDataGenerator(rescale=1. / 255, horizontal_flip=True)
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 
-base_model = tf2cv_get_model("resnext50_32x4d", pretrained=False, data_format="channels_last")
+base_model = tf2cv_get_model("seresnext50_32x4d", pretrained=False, data_format="channels_last")
 
 train = train_csv.iloc[:int(len(train_csv) * 0.8), :]
 test = train_csv.iloc[int(len(train_csv) * 0.8):, :]
@@ -47,7 +47,7 @@ model = tf.keras.Sequential([
 	tf.keras.layers.Input((512, 512, 3)),
 
 	tf.keras.layers.BatchNormalization(renorm=True),
-	tfa.layers.WeightNormalization(base_model),
+	base_model,
 	BatchNormalization(),
 	tf.keras.layers.LeakyReLU(),
 	tf.keras.layers.Flatten(),
