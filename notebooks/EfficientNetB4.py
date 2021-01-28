@@ -149,6 +149,35 @@ def plot_imgs(dataset_show, row, col):
 	plt.show()
 
 
+def MixUp(image, label, DIM, PROBABILITY=0.8):
+	# input image - is a batch of images of size [n,dim,dim,3] not a single image of [dim,dim,3]
+	# output - a batch of images with mixup applied
+	CLASSES = 5
+
+	imgs = [];
+	labs = []
+	for j in range(len(image)):
+		# DO MIXUP WITH PROBABILITY DEFINED ABOVE
+		P = tf.cast(tf.random.uniform([], 0, 1) <= PROBABILITY, tf.float32)
+
+		# CHOOSE RANDOM
+		k = tf.cast(tf.random.uniform([], 0, len(image)), tf.int32)
+		a = tf.random.uniform([], 0, 1) * P  # this is beta dist with alpha=1.0
+
+		# MAKE MIXUP IMAGE
+		img1 = image[j,]
+		img2 = image[k,]
+		imgs.append((1 - a) * img1 + a * img2)
+
+		# MAKE CUTMIX LABEL
+		labs.append((1 - a) * label[j] + a * label[k])
+
+	# RESHAPE HACK SO TPU COMPILER KNOWS SHAPE OF OUTPUT TENSOR (maybe use Python typing instead?)
+	image2 = tf.reshape(tf.stack(imgs), (len(image), DIM, DIM, 3))
+	label2 = tf.reshape(tf.stack(labs), (len(image), CLASSES))
+	return image2, label2
+
+
 def visulize(path, n_images, is_random=True, figsize=(16, 16)):
 	plt.figure(figsize=figsize)
 
@@ -214,6 +243,8 @@ class CassavaGenerator(tf.keras.utils.Sequence):
 		# cutmix
 		if self.use_cutmix:
 			Data, Target = CutMix(Data, Target, self.dim[0])
+		if self.use_mixup:
+			Data, Target = MixUp(Data, Target, self.dim[0])
 
 		return Data, Target
 
@@ -225,7 +256,7 @@ class CassavaGenerator(tf.keras.utils.Sequence):
 
 check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train, 12,
                               (800, 800, 3), shuffle=True,
-                              transform=albu_transforms_train(800), use_cutmix=True)
+                              transform=albu_transforms_train(800), use_cutmix=False, use_mixup=True)
 
 plot_imgs(check_gens, row=4, col=3)
 history = model.fit(check_gens,
@@ -242,4 +273,3 @@ fold_number += 1
 if fold_number == n_splits:
 	print("Training finished!")
 model.load_weights(checkpoint_filepath)
-model.save(r"/content/models/" + str(fold_number), include_optimizer=False, overwrite=True)
