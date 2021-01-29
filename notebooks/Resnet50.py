@@ -15,7 +15,6 @@ import os
 import math
 from tf2cv.model_provider import get_model as tf2cv_get_model
 
-
 physical_devices = tf.config.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
 policy = mixed_precision.Policy('mixed_float16')
@@ -26,12 +25,12 @@ datagen = ImageDataGenerator(rescale=1. / 255, horizontal_flip=True)
 train_csv = pd.read_csv(r"F:\Pycharm_projects\Kaggle Cassava\data\train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 
-base_model = tf2cv_get_model("resnet50", pretrained=False, data_format="channels_last")
-base_model.trainable = True
+base_model = tf.keras.applications.ResNet101(classes=5, include_top=True, weights=None, input_shape=(512, 512, 3))
 
 train = train_csv.iloc[:int(len(train_csv) * 0.8), :]
 test = train_csv.iloc[int(len(train_csv) * 0.8):, :]
 print((len(train), len(test)))
+base_model.trainable = True
 
 fold_number = 0
 
@@ -40,7 +39,8 @@ oof_accuracy = []
 
 first_decay_steps = 500
 lr = (tf.keras.experimental.CosineDecayRestarts(0.04, first_decay_steps))
-opt = tf.keras.optimizers.SGD(lr)
+opt = tf.keras.optimizers.SGD(lr, momentum=0.9)
+
 model = tf.keras.Sequential([
 	tf.keras.layers.experimental.preprocessing.RandomCrop(height=512, width=512),
 
@@ -53,10 +53,6 @@ model = tf.keras.Sequential([
 
 	tf.keras.layers.Dense(5, activation='softmax', dtype='float32')
 ])
-model.compile(
-	optimizer=opt,
-	loss=tf.keras.losses.CategoricalCrossentropy(),
-	metrics=['categorical_accuracy'])
 
 checkpoint_filepath = r"/content/temp/"
 model_checkpoint_callback = ModelCheckpoint(
@@ -70,10 +66,8 @@ model_checkpoint_callback = ModelCheckpoint(
 class BaseConfig(object):
 	SEED = 101
 	TRAIN_DF = r"F:\Pycharm_projects\Kaggle Cassava\data\train.csv"
-	TRAIN_IMG_PATH = r'F:/Pycharm_projects/Kaggle Cassava/data/train_images/'
-	TEST_IMG_PATH = '/content/test_images/'
-	CLASS_MAP = '/content/label_num_to_disease_map.json'
-
+	TRAIN_IMG_PATH = r"F:/Pycharm_projects/Kaggle Cassava/data/train_images/"
+	TEST_IMG_PATH = r'F:/Pycharm_projects/Kaggle Cassava/data/test_images/'
 
 def albu_transforms_train(data_resize):
 	return A.Compose([
@@ -149,35 +143,6 @@ def plot_imgs(dataset_show, row, col):
 	plt.show()
 
 
-def MixUp(image, label, DIM, PROBABILITY=0.8):
-	# input image - is a batch of images of size [n,dim,dim,3] not a single image of [dim,dim,3]
-	# output - a batch of images with mixup applied
-	CLASSES = 5
-
-	imgs = [];
-	labs = []
-	for j in range(len(image)):
-		# DO MIXUP WITH PROBABILITY DEFINED ABOVE
-		P = tf.cast(tf.random.uniform([], 0, 1) <= PROBABILITY, tf.float32)
-
-		# CHOOSE RANDOM
-		k = tf.cast(tf.random.uniform([], 0, len(image)), tf.int32)
-		a = tf.random.uniform([], 0, 1) * P  # this is beta dist with alpha=1.0
-
-		# MAKE MIXUP IMAGE
-		img1 = image[j,]
-		img2 = image[k,]
-		imgs.append((1 - a) * img1 + a * img2)
-
-		# MAKE CUTMIX LABEL
-		labs.append((1 - a) * label[j] + a * label[k])
-
-	# RESHAPE HACK SO TPU COMPILER KNOWS SHAPE OF OUTPUT TENSOR (maybe use Python typing instead?)
-	image2 = tf.reshape(tf.stack(imgs), (len(image), DIM, DIM, 3))
-	label2 = tf.reshape(tf.stack(labs), (len(image), CLASSES))
-	return image2, label2
-
-
 def visulize(path, n_images, is_random=True, figsize=(16, 16)):
 	plt.figure(figsize=figsize)
 
@@ -198,7 +163,7 @@ def visulize(path, n_images, is_random=True, figsize=(16, 16)):
 	plt.show()
 
 
-class CassavaGenerator(tf.keras.utils.Seque nce):
+class CassavaGenerator(tf.keras.utils.Sequence):
 	def __init__(self, img_path, data, batch_size,
 	             dim, shuffle=True, transform=None,
 	             use_mixup=False, use_cutmix=False,
@@ -243,8 +208,6 @@ class CassavaGenerator(tf.keras.utils.Seque nce):
 		# cutmix
 		if self.use_cutmix:
 			Data, Target = CutMix(Data, Target, self.dim[0])
-		if self.use_mixup:
-			Data, Target = MixUp(Data, Target, self.dim[0])
 
 		return Data, Target
 
@@ -254,6 +217,48 @@ class CassavaGenerator(tf.keras.utils.Seque nce):
 			np.random.shuffle(self.indices)
 
 
+# Taylor cross entropy loss
+def taylor_cross_entropy_loss(y_pred, y_true, n=3, label_smoothing=0.0):
+	"""Taylor Cross Entropy Loss.
+	Args:
+	y_pred: A multi-dimensional probability tensor with last dimension `num_classes`.
+	y_true: A tensor with shape and dtype as y_pred.
+	n: An order of taylor expansion.
+	label_smoothing: A float in [0, 1] for label smoothing.
+	Returns:
+	A loss tensor.
+	"""
+	y_pred = tf.cast(y_pred, tf.float32)
+	y_true = tf.cast(y_true, tf.float32)
+
+	if label_smoothing > 0.0:
+		num_classes = tf.cast(tf.shape(y_true)[-1], tf.float32)
+		y_true = (1 - num_classes / (num_classes - 1) * label_smoothing) * y_true + label_smoothing / (num_classes - 1)
+
+	y_pred_n_order = tf.math.maximum(tf.stack([1 - y_pred] * n), 1e-7)  # avoide being too small value
+	numerator = tf.math.maximum(tf.math.cumprod(y_pred_n_order, axis=0), 1e-7)  # avoide being too small value
+	denominator = tf.expand_dims(tf.expand_dims(tf.range(1, n + 1, dtype="float32"), axis=1), axis=1)
+	y_pred_taylor = tf.math.maximum(tf.math.reduce_sum(tf.math.divide(numerator, denominator), axis=0),
+	                                1e-7)  # avoide being too small value
+	loss_values = tf.math.reduce_sum(y_true * y_pred_taylor, axis=1, keepdims=True)
+	return tf.math.reduce_sum(loss_values, -1)
+
+
+class TaylorCrossEntropyLoss(tf.keras.losses.Loss):
+	def __init__(self, n=3, label_smoothing=0.0):
+		super(TaylorCrossEntropyLoss, self).__init__()
+		self.n = n
+		self.label_smoothing = label_smoothing
+
+	def call(self, y_true, y_pred):
+		return taylor_cross_entropy_loss(y_pred, y_true, n=self.n, label_smoothing=self.label_smoothing)
+
+
+model.compile(
+	optimizer=opt,
+	loss=tf.keras.losses.CategoricalCrossentropy(),
+	metrics=['categorical_accuracy'])
+
 check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train, 8,
                               (800, 800, 3), shuffle=True,
                               transform=albu_transforms_train(800), use_cutmix=True, use_mixup=False)
@@ -262,7 +267,8 @@ plot_imgs(check_gens, row=4, col=3)
 history = model.fit(check_gens,
                     callbacks=[model_checkpoint_callback],
                     epochs=25, validation_data=datagen.flow_from_dataframe(dataframe=test,
-                                                                           directory=r"F:\Pycharm_projects\Kaggle Cassava\data\train_images",
+                                                                           directory=r"F:/Pycharm_projects/Kaggle Cassava/data/train_images/",
+
                                                                            x_col="image_id",
                                                                            y_col="label", target_size=(800, 600),
                                                                            class_mode="categorical", batch_size=8,

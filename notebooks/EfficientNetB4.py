@@ -53,7 +53,6 @@ model = tf.keras.Sequential([
 	tf.keras.layers.Dense(5, activation='softmax', dtype='float32')
 ])
 
-
 checkpoint_filepath = r"/content/temp/"
 model_checkpoint_callback = ModelCheckpoint(
 	filepath=checkpoint_filepath,
@@ -254,6 +253,8 @@ class TaylorCrossEntropyLoss(tf.keras.losses.Loss):
 
 	def call(self, y_true, y_pred):
 		return taylor_cross_entropy_loss(y_pred, y_true, n=self.n, label_smoothing=self.label_smoothing)
+
+
 model.compile(
 	optimizer=opt,
 	loss=TaylorCrossEntropyLoss(),

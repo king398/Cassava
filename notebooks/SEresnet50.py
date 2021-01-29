@@ -25,7 +25,7 @@ datagen = ImageDataGenerator(rescale=1. / 255, horizontal_flip=True)
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 
-base_model = tf2cv_get_model("seresnext50_32x4d", pretrained=False, data_format="channels_last",)
+base_model = tf2cv_get_model("resnext50", pretrained=False, data_format="channels_last", )
 
 train = train_csv.iloc[:int(len(train_csv) * 0.8), :]
 test = train_csv.iloc[int(len(train_csv) * 0.8):, :]
@@ -38,8 +38,8 @@ n_splits = 5
 oof_accuracy = []
 
 first_decay_steps = 500
-lr = (tf.keras.experimental.CosineDecayRestarts(0.003, first_decay_steps))
-opt = tf.keras.optimizers.Adamax(lr)
+lr = (tf.keras.experimental.CosineDecayRestarts(0.04, first_decay_steps))
+opt = tf.keras.optimizers.SGD(lr, momentum=0.9)
 
 model = tf.keras.Sequential([
 	tf.keras.layers.experimental.preprocessing.RandomCrop(height=512, width=512),
@@ -53,7 +53,6 @@ model = tf.keras.Sequential([
 
 	tf.keras.layers.Dense(5, activation='softmax', dtype='float32')
 ])
-
 
 checkpoint_filepath = r"/content/temp/"
 model_checkpoint_callback = ModelCheckpoint(
@@ -255,9 +254,11 @@ class TaylorCrossEntropyLoss(tf.keras.losses.Loss):
 
 	def call(self, y_true, y_pred):
 		return taylor_cross_entropy_loss(y_pred, y_true, n=self.n, label_smoothing=self.label_smoothing)
+
+
 model.compile(
 	optimizer=opt,
-	loss=TaylorCrossEntropyLoss(),
+	loss=tf.keras.losses.CategoricalCrossentropy(),
 	metrics=['categorical_accuracy'])
 
 check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train, 16,
