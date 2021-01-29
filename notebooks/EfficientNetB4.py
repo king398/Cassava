@@ -13,6 +13,7 @@ import random
 from pylab import rcParams
 import os
 import math
+from sklearn.model_selection import StratifiedKFold
 
 physical_devices = tf.config.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
@@ -37,21 +38,6 @@ n_splits = 5
 oof_accuracy = []
 
 first_decay_steps = 500
-lr = (tf.keras.experimental.CosineDecayRestarts(0.003, first_decay_steps))
-opt = tf.keras.optimizers.Adamax(lr)
-
-model = tf.keras.Sequential([
-	tf.keras.layers.experimental.preprocessing.RandomCrop(height=512, width=512),
-
-	tf.keras.layers.Input((512, 512, 3)),
-	tf.keras.layers.BatchNormalization(renorm=True),
-	base_model,
-	BatchNormalization(),
-	tf.keras.layers.LeakyReLU(),
-	tf.keras.layers.Flatten(),
-
-	tf.keras.layers.Dense(5, activation='softmax', dtype='float32')
-])
 
 checkpoint_filepath = r"/content/temp/"
 model_checkpoint_callback = ModelCheckpoint(
@@ -219,64 +205,56 @@ class CassavaGenerator(tf.keras.utils.Sequence):
 
 
 # Taylor cross entropy loss
-def taylor_cross_entropy_loss(y_pred, y_true, n=3, label_smoothing=0.0):
-	"""Taylor Cross Entropy Loss.
-	Args:
-	y_pred: A multi-dimensional probability tensor with last dimension `num_classes`.
-	y_true: A tensor with shape and dtype as y_pred.
-	n: An order of taylor expansion.
-	label_smoothing: A float in [0, 1] for label smoothing.
-	Returns:
-	A loss tensor.
-	"""
-	y_pred = tf.cast(y_pred, tf.float32)
-	y_true = tf.cast(y_true, tf.float32)
-
-	if label_smoothing > 0.0:
-		num_classes = tf.cast(tf.shape(y_true)[-1], tf.float32)
-		y_true = (1 - num_classes / (num_classes - 1) * label_smoothing) * y_true + label_smoothing / (num_classes - 1)
-
-	y_pred_n_order = tf.math.maximum(tf.stack([1 - y_pred] * n), 1e-7)  # avoide being too small value
-	numerator = tf.math.maximum(tf.math.cumprod(y_pred_n_order, axis=0), 1e-7)  # avoide being too small value
-	denominator = tf.expand_dims(tf.expand_dims(tf.range(1, n + 1, dtype="float32"), axis=1), axis=1)
-	y_pred_taylor = tf.math.maximum(tf.math.reduce_sum(tf.math.divide(numerator, denominator), axis=0),
-	                                1e-7)  # avoide being too small value
-	loss_values = tf.math.reduce_sum(y_true * y_pred_taylor, axis=1, keepdims=True)
-	return tf.math.reduce_sum(loss_values, -1)
 
 
-class TaylorCrossEntropyLoss(tf.keras.losses.Loss):
-	def __init__(self, n=3, label_smoothing=0.0):
-		super(TaylorCrossEntropyLoss, self).__init__()
-		self.n = n
-		self.label_smoothing = label_smoothing
+fold_number = 0
 
-	def call(self, y_true, y_pred):
-		return taylor_cross_entropy_loss(y_pred, y_true, n=self.n, label_smoothing=self.label_smoothing)
+n_splits = 5
+oof_accuracy = []
+skf = StratifiedKFold(n_splits=n_splits)
 
 
-model.compile(
-	optimizer=opt,
-	loss=TaylorCrossEntropyLoss(),
-	metrics=['categorical_accuracy'])
+def new_model():
+	lr = (tf.keras.experimental.CosineDecayRestarts(0.04, first_decay_steps))
+	opt = tf.keras.optimizers.SGD(lr, momentum=0.9)
+	model = tf.keras.Sequential([
+		tf.keras.layers.experimental.preprocessing.RandomCrop(height=512, width=512),
 
-check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train, 16,
-                              (800, 800, 3), shuffle=True,
-                              transform=albu_transforms_train(800), use_cutmix=True, use_mixup=False)
+		tf.keras.layers.Input((512, 512, 3)),
+		tf.keras.layers.BatchNormalization(renorm=True),
+		base_model,
+		BatchNormalization(),
+		tf.keras.layers.LeakyReLU(),
+		tf.keras.layers.Flatten(),
 
-plot_imgs(check_gens, row=4, col=3)
-history = model.fit(check_gens,
-                    callbacks=[model_checkpoint_callback],
-                    epochs=25, validation_data=datagen.flow_from_dataframe(dataframe=test,
-                                                                           directory=r"/content/train_images",
+		tf.keras.layers.Dense(5, activation='softmax', dtype='float32')
+	])
+	model.compile(
+		optimizer=opt,
+		loss=tf.keras.losses.CategoricalCrossentropy(),
+		metrics=['categorical_accuracy'])
+	return model
 
-                                                                           x_col="image_id",
-                                                                           y_col="label", target_size=(800, 600),
-                                                                           class_mode="categorical", batch_size=16,
 
-                                                                           shuffle=True))
-oof_accuracy.append(max(history.history["val_categorical_accuracy"]))
-fold_number += 1
-if fold_number == n_splits:
-	print("Training finished!")
-model.load_weights(checkpoint_filepath)
+for train_index, val_index in skf.split(train_csv["image_id"], train_csv["label"]):
+	train_set = train_csv.loc[train_index]
+	val_set = train_csv.loc[val_index]
+	check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train_set, 16,
+	                              (800, 800, 3), shuffle=True,
+	                              transform=albu_transforms_train(800), use_cutmix=True, use_mixup=False)
+	model = new_model()
+	history = model.fit(check_gens,
+	                    callbacks=[model_checkpoint_callback],
+	                    epochs=1, validation_data=datagen.flow_from_dataframe(dataframe=val_set,
+	                                                                          directory=r"/content/train_images",
+	                                                                          x_col="image_id",
+	                                                                          y_col="label", target_size=(512, 512),
+	                                                                          class_mode="categorical", batch_size=16,
+
+	                                                                          shuffle=True))
+	oof_accuracy.append(max(history.history["val_categorical_accuracy"]))
+	fold_number += 1
+	if fold_number == n_splits:
+		print("Training finished!")
+	model.load_weights(checkpoint_filepath)
+	model.save(r"/content/models/" + str(fold_number), include_optimizer=False)
