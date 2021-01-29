@@ -14,7 +14,6 @@ from pylab import rcParams
 import os
 import math
 from tf2cv.model_provider import get_model as tf2cv_get_model
-import runai
 
 
 physical_devices = tf.config.list_physical_devices('GPU')
@@ -27,7 +26,7 @@ datagen = ImageDataGenerator(rescale=1. / 255, horizontal_flip=True)
 train_csv = pd.read_csv(r"F:\Pycharm_projects\Kaggle Cassava\data\train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 
-base_model = tf2cv_get_model("resnext50_32x4d", pretrained=False, data_format="channels_last")
+base_model = tf2cv_get_model("resnet50", pretrained=False, data_format="channels_last")
 base_model.trainable = True
 
 train = train_csv.iloc[:int(len(train_csv) * 0.8), :]
@@ -199,7 +198,7 @@ def visulize(path, n_images, is_random=True, figsize=(16, 16)):
 	plt.show()
 
 
-class CassavaGenerator(tf.keras.utils.Sequence):
+class CassavaGenerator(tf.keras.utils.Seque nce):
 	def __init__(self, img_path, data, batch_size,
 	             dim, shuffle=True, transform=None,
 	             use_mixup=False, use_cutmix=False,
@@ -255,7 +254,7 @@ class CassavaGenerator(tf.keras.utils.Sequence):
 			np.random.shuffle(self.indices)
 
 
-check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train, 6,
+check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train, 8,
                               (800, 800, 3), shuffle=True,
                               transform=albu_transforms_train(800), use_cutmix=True, use_mixup=False)
 
@@ -266,7 +265,7 @@ history = model.fit(check_gens,
                                                                            directory=r"F:\Pycharm_projects\Kaggle Cassava\data\train_images",
                                                                            x_col="image_id",
                                                                            y_col="label", target_size=(800, 600),
-                                                                           class_mode="categorical", batch_size=6,
+                                                                           class_mode="categorical", batch_size=8,
 
                                                                            shuffle=True))
 oof_accuracy.append(max(history.history["val_categorical_accuracy"]))
