@@ -24,12 +24,12 @@ datagen = ImageDataGenerator(rescale=1. / 255, horizontal_flip=True)
 train_csv = pd.read_csv(r"F:\Pycharm_projects\Kaggle Cassava\data\train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 image_size = 384
-base_model = vit.vit_l32(
+base_model = vit.vit_b32(
 	image_size=image_size,
 	activation="softmax",
 	pretrained=True,
 	include_top=True,
-	pretrained_top=True,
+	pretrained_top=False,
 	classes=5
 )
 
@@ -45,7 +45,7 @@ oof_accuracy = []
 
 first_decay_steps = 500
 lr = (tf.keras.experimental.CosineDecayRestarts(0.04, first_decay_steps))
-opt = tf.keras.optimizers.SGD(lr)
+opt = tf.keras.optimizers.SGD(lr, momentum=0.9)
 
 model = tf.keras.Sequential([
 	tf.keras.layers.experimental.preprocessing.RandomCrop(height=384, width=384),
@@ -227,7 +227,7 @@ class CassavaGenerator(tf.keras.utils.Sequence):
 			np.random.shuffle(self.indices)
 
 
-check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train, 12,
+check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train, 8,
                               (800, 800, 3), shuffle=True,
                               transform=albu_transforms_train(800), use_cutmix=True)
 
