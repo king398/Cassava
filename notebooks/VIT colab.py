@@ -21,7 +21,7 @@ tf.config.experimental.set_memory_growth(physical_devices[0], True)
 tf.keras.regularizers.l2(l2=0.01)
 
 datagen = ImageDataGenerator(rescale=1. / 255, horizontal_flip=True)
-train_csv = pd.read_csv(r"F:\Pycharm_projects\Kaggle Cassava\data\train.csv")
+train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 image_size = 384
 base_model = vit.vit_b32(
@@ -75,8 +75,10 @@ model_checkpoint_callback = ModelCheckpoint(
 
 class BaseConfig(object):
 	SEED = 101
-	TRAIN_DF = r'F:\Pycharm_projects\Kaggle Cassava\data\train.csv'
-	TRAIN_IMG_PATH = r"F:/Pycharm_projects/Kaggle Cassava/data/train_images/"
+	TRAIN_DF = r"/content/train.csv"
+	TRAIN_IMG_PATH = r'/content/train_images/'
+	TEST_IMG_PATH = '/content/test_images/'
+	CLASS_MAP = '/content/label_num_to_disease_map.json'
 
 
 def albu_transforms_train(data_resize):
@@ -227,7 +229,7 @@ class CassavaGenerator(tf.keras.utils.Sequence):
 			np.random.shuffle(self.indices)
 
 
-check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train, 12,
+check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train, 24,
                               (800, 800, 3), shuffle=True,
                               transform=albu_transforms_train(800), use_cutmix=True)
 
@@ -235,7 +237,7 @@ plot_imgs(check_gens, row=4, col=3)
 history = model.fit(check_gens,
                     callbacks=[model_checkpoint_callback],
                     epochs=15, validation_data=datagen.flow_from_dataframe(dataframe=test,
-                                                                           directory=r"F:\Pycharm_projects\Kaggle Cassava\data\train_images",
+                                                                           directory=r"/content/train_images",
                                                                            x_col="image_id",
                                                                            y_col="label", target_size=(800, 600),
                                                                            class_mode="categorical", batch_size=16,
