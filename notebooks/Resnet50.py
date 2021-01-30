@@ -26,7 +26,7 @@ datagen = ImageDataGenerator(rescale=1. / 255, horizontal_flip=True)
 train_csv = pd.read_csv(r"F:\Pycharm_projects\Kaggle Cassava\data\train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 
-base_model = efn.EfficientNetB0(weights='noisy-student', input_shape=(512, 512, 3), include_top=True)
+base_model = efn.EfficientNetB4(weights='noisy-student', input_shape=(512, 512, 3), include_top=True)
 
 train = train_csv.iloc[:int(len(train_csv) * 0.8), :]
 test = train_csv.iloc[int(len(train_csv) * 0.8):, :]
@@ -241,7 +241,7 @@ for train_index, val_index in skf.split(train_csv["image_id"], train_csv["label"
 	train_set = train_csv.loc[train_index]
 	val_set = train_csv.loc[val_index]
 
-	check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train_set, 12,
+	check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train_set, 6,
 	                              (800, 800, 3), shuffle=True,
 	                              transform=albu_transforms_train(800), use_cutmix=True, use_mixup=False)
 
@@ -249,10 +249,10 @@ for train_index, val_index in skf.split(train_csv["image_id"], train_csv["label"
 	history = model.fit(check_gens,
 	                    callbacks=[model_checkpoint_callback],
 	                    epochs=1, validation_data=datagen.flow_from_dataframe(dataframe=val_set,
-	                                                                          directory=r"/content/train_images",
+	                                                                          directory=r"F:\Pycharm_projects\Kaggle Cassava\data\test_images",
 	                                                                          x_col="image_id",
 	                                                                          y_col="label", target_size=(512, 512),
-	                                                                          class_mode="categorical", batch_size=16,
+	                                                                          class_mode="categorical", batch_size=6,
 
 	                                                                          shuffle=True))
 	oof_accuracy.append(max(history.history["val_categorical_accuracy"]))
@@ -261,4 +261,3 @@ for train_index, val_index in skf.split(train_csv["image_id"], train_csv["label"
 		print("Training finished!")
 	model.load_weights(checkpoint_filepath)
 	model.save(r"/content/models/" + str(fold_number), include_optimizer=False)
-

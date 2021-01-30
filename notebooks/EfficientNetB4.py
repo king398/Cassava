@@ -248,7 +248,7 @@ for train_index, val_index in skf.split(train_csv["image_id"], train_csv["label"
 	                    epochs=1, validation_data=datagen.flow_from_dataframe(dataframe=val_set,
 	                                                                          directory=r"/content/train_images",
 	                                                                          x_col="image_id",
-	                                                                          y_col="label", target_size=(512, 512),
+	                                                                          y_col="label", target_size=(800, 600),
 	                                                                          class_mode="categorical", batch_size=16,
 
 	                                                                          shuffle=True))
