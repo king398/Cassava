@@ -261,3 +261,6 @@ for train_index, val_index in skf.split(train_csv["image_id"], train_csv["label"
 		print("Training finished!")
 	model.load_weights(checkpoint_filepath)
 	model.save(r"/content/models/" + str(fold_number), include_optimizer=False)
+	history.history.keys()
+
+print(sum(oof_accuracy) / len(oof_accuracy))

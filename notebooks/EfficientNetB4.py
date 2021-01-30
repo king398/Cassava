@@ -13,7 +13,7 @@ import random
 from pylab import rcParams
 import os
 import math
-from sklearn.model_selection import StratifiedKFold
+from sklearn.model_selection import KFold
 
 physical_devices = tf.config.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
@@ -211,7 +211,7 @@ fold_number = 0
 
 n_splits = 5
 oof_accuracy = []
-skf = StratifiedKFold(n_splits=n_splits)
+skf = KFold(n_splits=n_splits)
 
 
 def new_model():
@@ -239,13 +239,13 @@ def new_model():
 for train_index, val_index in skf.split(train_csv["image_id"], train_csv["label"]):
 	train_set = train_csv.loc[train_index]
 	val_set = train_csv.loc[val_index]
-	check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train_set, 16,
+	check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train_set, 12,
 	                              (800, 800, 3), shuffle=True,
 	                              transform=albu_transforms_train(800), use_cutmix=True, use_mixup=False)
 	model = new_model()
 	history = model.fit(check_gens,
 	                    callbacks=[model_checkpoint_callback],
-	                    epochs=1, validation_data=datagen.flow_from_dataframe(dataframe=val_set,
+	                    epochs=5, validation_data=datagen.flow_from_dataframe(dataframe=val_set,
 	                                                                          directory=r"/content/train_images",
 	                                                                          x_col="image_id",
 	                                                                          y_col="label", target_size=(800, 600),

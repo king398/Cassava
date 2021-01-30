@@ -26,10 +26,10 @@ train_csv["label"] = train_csv["label"].astype(str)
 image_size = 384
 base_model = vit.vit_l32(
 	image_size=image_size,
-	activation=None,
-	pretrained=False,
+	activation="softmax",
+	pretrained=True,
 	include_top=True,
-	pretrained_top=False,
+	pretrained_top=True,
 	classes=5
 )
 
@@ -227,7 +227,7 @@ class CassavaGenerator(tf.keras.utils.Sequence):
 			np.random.shuffle(self.indices)
 
 
-check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train, 8,
+check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train, 12,
                               (800, 800, 3), shuffle=True,
                               transform=albu_transforms_train(800), use_cutmix=True)
 
@@ -238,7 +238,7 @@ history = model.fit(check_gens,
                                                                            directory=r"F:\Pycharm_projects\Kaggle Cassava\data\train_images",
                                                                            x_col="image_id",
                                                                            y_col="label", target_size=(800, 600),
-                                                                           class_mode="categorical", batch_size=12,
+                                                                           class_mode="categorical", batch_size=16,
 
                                                                            shuffle=True))
 oof_accuracy.append(max(history.history["val_categorical_accuracy"]))
