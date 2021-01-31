@@ -15,8 +15,6 @@ import os
 import math
 from tf2cv.model_provider import get_model as tf2cv_get_model
 
-physical_devices = tf.config.list_physical_devices('GPU')
-tf.config.experimental.set_memory_growth(physical_devices[0], True)
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
 tf.keras.regularizers.l2(l2=0.01)
@@ -25,7 +23,7 @@ datagen = ImageDataGenerator(rescale=1. / 255, horizontal_flip=True)
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 
-base_model = tf2cv_get_model("seresnext50_32x4d", pretrained=True, data_format="channels_last")
+base_model = tf2cv_get_model("seresnext50_32x4d", pretrained=False, data_format="channels_last")
 
 train = train_csv.iloc[:int(len(train_csv) * 0.8), :]
 test = train_csv.iloc[int(len(train_csv) * 0.8):, :]
