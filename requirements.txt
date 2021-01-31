@@ -9,3 +9,4 @@ matplotlib~=3.3.2
 keras~=2.4.3
 efficientnet~=1.1.1
 tf2cv~=0.0.13
+albumentations~=0.5.2

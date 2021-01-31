@@ -14,6 +14,7 @@ from pylab import rcParams
 import os
 import math
 from sklearn.model_selection import KFold
+import tensorflow_addons as tfa
 
 physical_devices = tf.config.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
@@ -224,7 +225,7 @@ def new_model():
 		tf.keras.layers.BatchNormalization(renorm=True),
 		base_model,
 		BatchNormalization(),
-		tf.keras.layers.LeakyReLU(),
+		tf.keras.layers.Activation(tfa.activations.rrelu()),
 		tf.keras.layers.Flatten(),
 
 		tf.keras.layers.Dense(5, activation='softmax', dtype='float32')

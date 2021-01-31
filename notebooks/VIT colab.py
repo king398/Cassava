@@ -1,19 +1,18 @@
-import tensorflow as tf
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from tensorflow.keras.mixed_precision import experimental as mixed_precision
-import pandas as pd
-from tensorflow.keras.layers import Flatten, Dense, LeakyReLU, BatchNormalization, Dropout, PReLU
-from tensorflow.keras.callbacks import ModelCheckpoint
+import math
+import os
+import random
+
 import albumentations as A
-import numpy as np
 import cv2
 import matplotlib.pyplot as plt
-import random
+import numpy as np
+import pandas as pd
+import tensorflow as tf
 from pylab import rcParams
-import os
-import math
-
-from vit_keras import vit, utils
+from tensorflow.keras.callbacks import ModelCheckpoint
+from tensorflow.keras.layers import BatchNormalization
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from vit_keras import vit
 
 physical_devices = tf.config.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
@@ -29,7 +28,7 @@ base_model = vit.vit_b32(
 	activation="softmax",
 	pretrained=True,
 	include_top=True,
-	pretrained_top=False,
+	pretrained_top=True,
 	classes=5
 )
 
@@ -102,7 +101,7 @@ def CutMix(image, label, DIM, PROBABILITY=0.8):
 	# output - a batch of images with cutmix applied
 	CLASSES = 5
 
-	imgs = [];
+	imgs = []
 	labs = []
 	for j in range(len(image)):
 		# DO CUTMIX WITH PROBABILITY DEFINED ABOVE

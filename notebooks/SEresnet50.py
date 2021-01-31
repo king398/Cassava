@@ -39,7 +39,7 @@ oof_accuracy = []
 
 first_decay_steps = 500
 lr = (tf.keras.experimental.CosineDecayRestarts(0.04, first_decay_steps))
-opt = tf.keras.optimizers.SGD(lr, momentum=0.9)
+opt = tf.keras.optimizers.SGD(lr)
 
 model = tf.keras.Sequential([
 	tf.keras.layers.experimental.preprocessing.RandomCrop(height=512, width=512),

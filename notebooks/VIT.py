@@ -1,6 +1,5 @@
 import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from tensorflow.keras.mixed_precision import experimental as mixed_precision
 import pandas as pd
 from tensorflow.keras.layers import Flatten, Dense, LeakyReLU, BatchNormalization, Dropout, PReLU
 from tensorflow.keras.callbacks import ModelCheckpoint
@@ -12,9 +11,8 @@ import random
 from pylab import rcParams
 import os
 import math
-
 from vit_keras import vit, utils
-
+utils.get_imagenet_classes()
 physical_devices = tf.config.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
@@ -29,7 +27,7 @@ base_model = vit.vit_b32(
 	activation="softmax",
 	pretrained=True,
 	include_top=True,
-	pretrained_top=False,
+	pretrained_top=True,
 	classes=5
 )
 
@@ -45,7 +43,7 @@ oof_accuracy = []
 
 first_decay_steps = 500
 lr = (tf.keras.experimental.CosineDecayRestarts(0.04, first_decay_steps))
-opt = tf.keras.optimizers.SGD(lr, momentum=0.9)
+opt = tf.keras.optimizers.SGD(lr)
 
 model = tf.keras.Sequential([
 	tf.keras.layers.experimental.preprocessing.RandomCrop(height=384, width=384),
@@ -227,7 +225,7 @@ class CassavaGenerator(tf.keras.utils.Sequence):
 			np.random.shuffle(self.indices)
 
 
-check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train, 12,
+check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train, 16,
                               (800, 800, 3), shuffle=True,
                               transform=albu_transforms_train(800), use_cutmix=True)
 
