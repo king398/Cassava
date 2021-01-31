@@ -229,7 +229,7 @@ check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train, 16,
                               (800, 800, 3), shuffle=True,
                               transform=albu_transforms_train(800), use_cutmix=True)
 
-plot_imgs(check_gens, row=4, col=3)
+plot_imgs(check_gens, row=6, col=6)
 history = model.fit(check_gens,
                     callbacks=[model_checkpoint_callback],
                     epochs=15, validation_data=datagen.flow_from_dataframe(dataframe=test,

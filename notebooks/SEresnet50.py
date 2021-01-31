@@ -36,8 +36,8 @@ n_splits = 5
 oof_accuracy = []
 
 first_decay_steps = 500
-lr = (tf.keras.experimental.CosineDecayRestarts(0.04, first_decay_steps))
-opt = tf.keras.optimizers.SGD(lr)
+lr = (tf.keras.experimental.CosineDecayRestarts(0.003, first_decay_steps))
+opt = tf.keras.optimizers.Adamax(lr)
 
 model = tf.keras.Sequential([
 	tf.keras.layers.experimental.preprocessing.RandomCrop(height=512, width=512),
