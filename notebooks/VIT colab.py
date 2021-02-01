@@ -32,6 +32,7 @@ base_model = vit.vit_b32(
 	classes=5
 )
 
+
 train = train_csv.iloc[:int(len(train_csv) * 0.8), :]
 test = train_csv.iloc[int(len(train_csv) * 0.8):, :]
 print((len(train), len(test)))
@@ -43,7 +44,7 @@ n_splits = 5
 oof_accuracy = []
 
 first_decay_steps = 500
-lr = (tf.keras.experimental.CosineDecayRestarts(0.04, first_decay_steps))
+lr = (tf.keras.experimental.NoisyLinearCosineDecay(0.04, first_decay_steps))
 opt = tf.keras.optimizers.SGD(lr, momentum=0.9)
 
 model = tf.keras.Sequential([
