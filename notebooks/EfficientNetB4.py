@@ -5,6 +5,7 @@ import pandas as pd
 from tensorflow.keras.layers import Flatten, Dense, LeakyReLU, BatchNormalization, Dropout, PReLU
 from tensorflow.keras.callbacks import ModelCheckpoint
 import efficientnet.keras as efn
+import tensorflow_addons as tfa
 import albumentations as A
 import numpy as np
 import cv2
@@ -13,11 +14,9 @@ import random
 from pylab import rcParams
 import os
 import math
-from sklearn.model_selection import KFold
+from sklearn.model_selection import train_test_split
 import tensorflow_addons as tfa
 
-physical_devices = tf.config.list_physical_devices('GPU')
-tf.config.experimental.set_memory_growth(physical_devices[0], True)
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
 tf.keras.regularizers.l2(l2=0.01)
@@ -35,10 +34,30 @@ base_model.trainable = True
 
 fold_number = 0
 
+
 n_splits = 5
 oof_accuracy = []
 
-first_decay_steps = 500
+first_decay_steps =500 
+lr = (tf.keras.experimental.CosineDecayRestarts(0.04, first_decay_steps))
+opt = tf.keras.optimizers.SGD(lr)
+
+model = tf.keras.Sequential([
+	tf.keras.layers.experimental.preprocessing.RandomCrop(height=512, width=512),
+
+	tf.keras.layers.Input((512, 512, 3)),
+	tf.keras.layers.BatchNormalization(renorm=True),
+	base_model,
+	BatchNormalization(),
+	tf.keras.layers.LeakyReLU(),
+	tf.keras.layers.Flatten(),
+
+	tf.keras.layers.Dense(5, activation='softmax', dtype='float32')
+])
+model.compile(
+	optimizer=opt,
+	loss=tfa.losses.SigmoidFocalCrossEntropy(),
+	metrics=['categorical_accuracy'])
 
 checkpoint_filepath = r"/content/temp/"
 model_checkpoint_callback = ModelCheckpoint(
@@ -51,8 +70,8 @@ model_checkpoint_callback = ModelCheckpoint(
 
 class BaseConfig(object):
 	SEED = 101
-	TRAIN_DF = r"/content/train.csv"
-	TRAIN_IMG_PATH = r'/content/train_images/'
+	TRAIN_DF = '/content/train.csv/'
+	TRAIN_IMG_PATH = '/content/train_images/'
 	TEST_IMG_PATH = '/content/test_images/'
 	CLASS_MAP = '/content/label_num_to_disease_map.json'
 
@@ -62,6 +81,7 @@ def albu_transforms_train(data_resize):
 		A.ToFloat(),
 		A.Resize(800, 800),
 		A.HorizontalFlip()
+
 	], p=1.)
 
 
@@ -205,57 +225,23 @@ class CassavaGenerator(tf.keras.utils.Sequence):
 			np.random.shuffle(self.indices)
 
 
-# Taylor cross entropy loss
+check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train, 12,
+                              (800, 800, 3), shuffle=True,
+                              transform=albu_transforms_train(800), use_cutmix=True)
 
+plot_imgs(check_gens, row=4, col=3)
+history = model.fit(check_gens,
+                    callbacks=[model_checkpoint_callback],
+                    epochs=25, validation_data=datagen.flow_from_dataframe(dataframe=test,
+                                                                           directory=r"/content/train_images",
+                                                                           x_col="image_id",
+                                                                           y_col="label", target_size=(800, 600),
+                                                                           class_mode="categorical", batch_size=12,
 
-fold_number = 0
-
-n_splits = 5
-oof_accuracy = []
-skf = KFold(n_splits=n_splits)
-
-
-def new_model():
-	lr = (tf.keras.experimental.CosineDecayRestarts(0.04, first_decay_steps))
-	opt = tf.keras.optimizers.SGD(lr, momentum=0.9)
-	model = tf.keras.Sequential([
-		tf.keras.layers.experimental.preprocessing.RandomCrop(height=512, width=512),
-
-		tf.keras.layers.Input((512, 512, 3)),
-		tf.keras.layers.BatchNormalization(renorm=True),
-		base_model,
-		BatchNormalization(),
-		tf.keras.layers.Activation(tfa.activations.rrelu()),
-		tf.keras.layers.Flatten(),
-
-		tf.keras.layers.Dense(5, activation='softmax', dtype='float32')
-	])
-	model.compile(
-		optimizer=opt,
-		loss=tf.keras.losses.CategoricalCrossentropy(),
-		metrics=['categorical_accuracy'])
-	return model
-
-
-for train_index, val_index in skf.split(train_csv["image_id"], train_csv["label"]):
-	train_set = train_csv.loc[train_index]
-	val_set = train_csv.loc[val_index]
-	check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train_set, 12,
-	                              (800, 800, 3), shuffle=True,
-	                              transform=albu_transforms_train(800), use_cutmix=True, use_mixup=False)
-	model = new_model()
-	history = model.fit(check_gens,
-	                    callbacks=[model_checkpoint_callback],
-	                    epochs=5, validation_data=datagen.flow_from_dataframe(dataframe=val_set,
-	                                                                          directory=r"/content/train_images",
-	                                                                          x_col="image_id",
-	                                                                          y_col="label", target_size=(800, 600),
-	                                                                          class_mode="categorical", batch_size=16,
-
-	                                                                          shuffle=True))
-	oof_accuracy.append(max(history.history["val_categorical_accuracy"]))
-	fold_number += 1
-	if fold_number == n_splits:
-		print("Training finished!")
-	model.load_weights(checkpoint_filepath)
-	model.save(r"/content/models/" + str(fold_number), include_optimizer=False)
+                                                                           shuffle=True))
+oof_accuracy.append(max(history.history["val_categorical_accuracy"]))
+fold_number += 1
+if fold_number == n_splits:
+	print("Training finished!")
+model.load_weights(checkpoint_filepath)
+model.save(r"/content/models/" + str(fold_number), include_optimizer=False, overwrite=True)

@@ -12,8 +12,10 @@ from pylab import rcParams
 import os
 import math
 from vit_keras import vit, utils
-utils.get_imagenet_classes()
-physical_devices = tf.config.list_physical_devices('GPU')
+import itertools
+import sklearn.metrics
+
+physical_devices = tf.config    .list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 tf.keras.regularizers.l2(l2=0.01)
@@ -21,7 +23,7 @@ tf.keras.regularizers.l2(l2=0.01)
 datagen = ImageDataGenerator(rescale=1. / 255, horizontal_flip=True)
 train_csv = pd.read_csv(r"F:\Pycharm_projects\Kaggle Cassava\data\train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
-image_size = 384
+image_size = 512
 base_model = vit.vit_b32(
 	image_size=image_size,
 	activation="softmax",
@@ -34,22 +36,22 @@ base_model = vit.vit_b32(
 train = train_csv.iloc[:int(len(train_csv) * 0.8), :]
 test = train_csv.iloc[int(len(train_csv) * 0.8):, :]
 print((len(train), len(test)))
-base_model.trainable = True
+base_model.trainable = False
 
 fold_number = 0
 
 n_splits = 5
 oof_accuracy = []
-
+batch_size = 17
 first_decay_steps = 500
 lr = (tf.keras.experimental.CosineDecayRestarts(0.04, first_decay_steps))
 opt = tf.keras.optimizers.SGD(lr)
 
 model = tf.keras.Sequential([
-	tf.keras.layers.experimental.preprocessing.RandomCrop(height=384, width=384),
+	tf.keras.layers.experimental.preprocessing.RandomCrop(height=512, width=512),
 
-	tf.keras.layers.Input((384, 384, 3)),
-	tf.keras.layers.BatchNormalization(renorm=True),
+	tf.keras.layers.Input((512, 512, 3)),
+	tf.keras.layers.BatchNormalization(),
 	base_model,
 	BatchNormalization(),
 	tf.keras.layers.LeakyReLU(),
@@ -134,21 +136,40 @@ def CutMix(image, label, DIM, PROBABILITY=0.8):
 	# RESHAPE HACK SO TPU COMPILER KNOWS SHAPE OF OUTPUT TENSOR (maybe use Python typing instead?)
 	image2 = tf.reshape(tf.stack(imgs), (len(image), DIM, DIM, 3))
 	label2 = tf.reshape(tf.stack(labs), (len(image), CLASSES))
-	label2 = tf.cast(label2, dtype=tf.float16)
+	image2 = tf.cast(image2, dtype=tf.float32)
+	label2 = tf.cast(label2, tf.float32)
 	return image2, label2
 
 
-def plot_imgs(dataset_show, row, col):
-	rcParams['figure.figsize'] = 20, 10
-	for i in range(row):
-		f, ax = plt.subplots(1, col)
-		for p in range(col):
-			idx = np.random.randint(0, len(dataset_show))
-			img, label = dataset_show[idx]
-			ax[p].grid(False)
-			ax[p].imshow(img[0])
-			ax[p].set_title(idx)
-	plt.show()
+def plot_confusion_matrix(cm, class_names):
+	"""
+	Returns a matplotlib figure containing the plotted confusion matrix.
+
+	Args:
+	  cm (array, shape = [n, n]): a confusion matrix of integer classes
+	  class_names (array, shape = [n]): String names of the integer classes
+	"""
+	figure = plt.figure(figsize=(8, 8))
+	plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
+	plt.title("Confusion matrix")
+	plt.colorbar()
+	tick_marks = np.arange(len(class_names))
+	plt.xticks(tick_marks, class_names, rotation=45)
+	plt.yticks(tick_marks, class_names)
+
+	# Compute the labels from the normalized confusion matrix.
+	labels = np.around(cm.astype('float') / cm.sum(axis=1)[:, np.newaxis], decimals=2)
+
+	# Use white text if squares are dark; otherwise black.
+	threshold = cm.max() / 2.
+	for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+		color = "white" if cm[i, j] > threshold else "black"
+		plt.text(j, i, labels[i, j], horizontalalignment="center", color=color)
+
+	plt.tight_layout()
+	plt.ylabel('True label')
+	plt.xlabel('Predicted label')
+	return figure
 
 
 def visulize(path, n_images, is_random=True, figsize=(16, 16)):
@@ -220,25 +241,32 @@ class CassavaGenerator(tf.keras.utils.Sequence):
 		return Data, Target
 
 	def on_epoch_end(self):
+
 		self.indices = np.arange(len(self.list_idx))
 		if self.shuffle:
 			np.random.shuffle(self.indices)
 
 
-check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train, 16,
+# Define the per-epoch callback.
+
+
+check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train, 8,
                               (800, 800, 3), shuffle=True,
                               transform=albu_transforms_train(800), use_cutmix=True)
 
-plot_imgs(check_gens, row=6, col=6)
+steps = 17119 / 1
+valid_steps = 4280 / 20
 history = model.fit(check_gens,
                     callbacks=[model_checkpoint_callback],
                     epochs=15, validation_data=datagen.flow_from_dataframe(dataframe=test,
                                                                            directory=r"F:\Pycharm_projects\Kaggle Cassava\data\train_images",
                                                                            x_col="image_id",
                                                                            y_col="label", target_size=(800, 600),
-                                                                           class_mode="categorical", batch_size=16,
+                                                                           class_mode="categorical",
+                                                                           batch_size=20,
 
-                                                                           shuffle=True))
+                                                                           shuffle=True),
+                    )
 oof_accuracy.append(max(history.history["val_categorical_accuracy"]))
 fold_number += 1
 if fold_number == n_splits:

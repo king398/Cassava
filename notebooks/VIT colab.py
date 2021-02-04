@@ -22,7 +22,7 @@ tf.keras.regularizers.l2(l2=0.01)
 datagen = ImageDataGenerator(rescale=1. / 255, horizontal_flip=True)
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
-image_size = 384
+image_size = 512
 base_model = vit.vit_b32(
 	image_size=image_size,
 	activation="softmax",
@@ -31,7 +31,6 @@ base_model = vit.vit_b32(
 	pretrained_top=False,
 	classes=5
 )
-
 
 train = train_csv.iloc[:int(len(train_csv) * 0.8), :]
 test = train_csv.iloc[int(len(train_csv) * 0.8):, :]
@@ -44,13 +43,13 @@ n_splits = 5
 oof_accuracy = []
 
 first_decay_steps = 500
-lr = (tf.keras.experimental.NoisyLinearCosineDecay(0.04, first_decay_steps))
+lr = (tf.keras.experimental.CosineDecayRestarts(0.04, first_decay_steps))
 opt = tf.keras.optimizers.SGD(lr, momentum=0.9)
 
 model = tf.keras.Sequential([
-	tf.keras.layers.experimental.preprocessing.RandomCrop(height=384, width=384),
+	tf.keras.layers.experimental.preprocessing.RandomCrop(height=512, width=512),
 
-	tf.keras.layers.Input((384, 384, 3)),
+	tf.keras.layers.Input((512, 512, 3)),
 	tf.keras.layers.BatchNormalization(renorm=True),
 	base_model,
 	BatchNormalization(),

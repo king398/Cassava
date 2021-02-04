@@ -37,7 +37,7 @@ fold_number = 0
 n_splits = 5
 oof_accuracy = []
 
-first_decay_steps = 500
+first_decay_steps = 400
 lr = (tf.keras.experimental.CosineDecayRestarts(0.04, first_decay_steps))
 opt = tf.keras.optimizers.SGD(lr)
 
@@ -80,6 +80,7 @@ def albu_transforms_train(data_resize):
 		A.ToFloat(),
 		A.Resize(800, 800),
 		A.HorizontalFlip()
+		
 	], p=1.)
 
 
@@ -242,3 +243,4 @@ fold_number += 1
 if fold_number == n_splits:
 	print("Training finished!")
 model.load_weights(checkpoint_filepath)
+model.save(r"/content/models/" + str(fold_number), include_optimizer=False, overwrite=True)

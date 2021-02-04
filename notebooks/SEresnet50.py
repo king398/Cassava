@@ -23,7 +23,7 @@ datagen = ImageDataGenerator(rescale=1. / 255, horizontal_flip=True)
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 
-base_model = tf2cv_get_model("seresnext50_32x4d", pretrained=True, data_format="channels_last")
+base_model = tf2cv_get_model("seresnext50_32x4d", pretrained=False, data_format="channels_last")
 
 train = train_csv.iloc[:int(len(train_csv) * 0.8), :]
 test = train_csv.iloc[int(len(train_csv) * 0.8):, :]
@@ -40,9 +40,8 @@ lr = (tf.keras.experimental.CosineDecayRestarts(0.04, first_decay_steps))
 opt = tf.keras.optimizers.SGD(lr)
 
 model = tf.keras.Sequential([
-	tf.keras.layers.experimental.preprocessing.RandomCrop(height=224, width=224),
+	tf.keras.layers.experimental.preprocessing.RandomCrop(height=512, width=512),
 
-	tf.keras.layers.Input((224,224, 3)),
 	tf.keras.layers.BatchNormalization(renorm=True),
 	base_model,
 	BatchNormalization(),
