@@ -2,10 +2,9 @@ import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.mixed_precision import experimental as mixed_precision
 import pandas as pd
-from tensorflow.keras.layers import Flatten, Dense, LeakyReLU, BatchNormalization, Dropout, PReLU
+from tensorflow.keras.layers import BatchNormalization
 from tensorflow.keras.callbacks import ModelCheckpoint
 import efficientnet.keras as efn
-import tensorflow_addons as tfa
 import albumentations as A
 import numpy as np
 import cv2
@@ -14,8 +13,8 @@ import random
 from pylab import rcParams
 import os
 import math
-from sklearn.model_selection import train_test_split
-import tensorflow_addons as tfa
+import sys
+sys.path.append('./SnapMix-tensorflow2')
 
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
@@ -27,6 +26,7 @@ train_csv["label"] = train_csv["label"].astype(str)
 
 base_model = efn.EfficientNetB4(weights='noisy-student', input_shape=(512, 512, 3), include_top=True)
 
+
 train = train_csv.iloc[:int(len(train_csv) * 0.8), :]
 test = train_csv.iloc[int(len(train_csv) * 0.8):, :]
 print((len(train), len(test)))
@@ -34,11 +34,10 @@ base_model.trainable = True
 
 fold_number = 0
 
-
 n_splits = 5
 oof_accuracy = []
 
-first_decay_steps =500 
+first_decay_steps =500
 lr = (tf.keras.experimental.CosineDecayRestarts(0.04, first_decay_steps))
 opt = tf.keras.optimizers.SGD(lr)
 
@@ -46,6 +45,7 @@ model = tf.keras.Sequential([
 	tf.keras.layers.experimental.preprocessing.RandomCrop(height=512, width=512),
 
 	tf.keras.layers.Input((512, 512, 3)),
+
 	tf.keras.layers.BatchNormalization(renorm=True),
 	base_model,
 	BatchNormalization(),
@@ -56,7 +56,7 @@ model = tf.keras.Sequential([
 ])
 model.compile(
 	optimizer=opt,
-	loss=tfa.losses.SigmoidFocalCrossEntropy(),
+	loss=tf.losses.CategoricalCrossentropy(),
 	metrics=['categorical_accuracy'])
 
 checkpoint_filepath = r"/content/temp/"
