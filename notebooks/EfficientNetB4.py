@@ -14,7 +14,9 @@ from pylab import rcParams
 import os
 import math
 import sys
-sys.path.append('./SnapMix-tensorflow2')
+
+sys.path.append('./bitemperedloss-tf')
+from tf_bi_tempered_loss import BiTemperedLogisticLoss
 
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
@@ -26,7 +28,6 @@ train_csv["label"] = train_csv["label"].astype(str)
 
 base_model = efn.EfficientNetB4(weights='noisy-student', input_shape=(512, 512, 3), include_top=True)
 
-
 train = train_csv.iloc[:int(len(train_csv) * 0.8), :]
 test = train_csv.iloc[int(len(train_csv) * 0.8):, :]
 print((len(train), len(test)))
@@ -37,7 +38,7 @@ fold_number = 0
 n_splits = 5
 oof_accuracy = []
 
-first_decay_steps =500
+first_decay_steps = 500
 lr = (tf.keras.experimental.CosineDecayRestarts(0.04, first_decay_steps))
 opt = tf.keras.optimizers.SGD(lr)
 
@@ -56,7 +57,7 @@ model = tf.keras.Sequential([
 ])
 model.compile(
 	optimizer=opt,
-	loss=tf.losses.CategoricalCrossentropy(),
+	loss=BiTemperedLogisticLoss(t1=0.4, t2=2.0),
 	metrics=['categorical_accuracy'])
 
 checkpoint_filepath = r"/content/temp/"
@@ -80,7 +81,8 @@ def albu_transforms_train(data_resize):
 	return A.Compose([
 		A.ToFloat(),
 		A.Resize(800, 800),
-		A.HorizontalFlip()
+		A.HorizontalFlip(),
+		A.RandomBrightness(),
 
 	], p=1.)
 
