@@ -2,7 +2,7 @@ import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.mixed_precision import experimental as mixed_precision
 import pandas as pd
-from tensorflow.keras.layers import Flatten, Dense, LeakyReLU, BatchNormalization, Dropout, PReLU
+from tensorflow.keras.layers import BatchNormalization
 from tensorflow.keras.callbacks import ModelCheckpoint
 import efficientnet.keras as efn
 import albumentations as A
@@ -13,20 +13,21 @@ import random
 from pylab import rcParams
 import os
 import math
+import sys
 from tf2cv.model_provider import get_model as tf2cv_get_model
 
-physical_devices = tf.config.list_physical_devices('GPU')
-tf.config.experimental.set_memory_growth(physical_devices[0], True)
+sys.path.append('./bitemperedloss-tf')
+from tf_bi_tempered_loss import BiTemperedLogisticLoss
 
 policy = mixed_precision.Policy('mixed_float16')
-mixed_precision.set_policy(policy)
+tf.keras.mixed_precision.set_global_policy(policy)
 tf.keras.regularizers.l2(l2=0.01)
 
 datagen = ImageDataGenerator(rescale=1. / 255, horizontal_flip=True)
-train_csv = pd.read_csv(r'F:\Pycharm_projects\Kaggle Cassava\data\train.csv')
+train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 
-base_model = tf2cv_get_model("seresnext50_32x4d", pretrained=False, data_format="channels_last")
+base_model = efn.EfficientNetB4(weights='noisy-student', input_shape=(512, 512, 3), include_top=True)
 
 train = train_csv.iloc[:int(len(train_csv) * 0.8), :]
 test = train_csv.iloc[int(len(train_csv) * 0.8):, :]
@@ -39,11 +40,13 @@ n_splits = 5
 oof_accuracy = []
 
 first_decay_steps = 500
-lr = (tf.keras.experimental.CosineDecayRestarts(0.04, first_decay_steps))
+lr = tf.keras.experimental.NoisyLinearCosineDecay(0.06, decay_steps=first_decay_steps)
 opt = tf.keras.optimizers.SGD(lr)
 
 model = tf.keras.Sequential([
 	tf.keras.layers.experimental.preprocessing.RandomCrop(height=512, width=512),
+
+	tf.keras.layers.Input((512, 512, 3)),
 
 	tf.keras.layers.BatchNormalization(renorm=True),
 	base_model,
@@ -53,8 +56,12 @@ model = tf.keras.Sequential([
 
 	tf.keras.layers.Dense(5, activation='softmax', dtype='float32')
 ])
+model.compile(
+	optimizer=opt,
+	loss=BiTemperedLogisticLoss(t1=0.4, t2=2.0, label_smoothing=0.05),
+	metrics=['categorical_accuracy'])
 
-checkpoint_filepath = r"temp/"
+checkpoint_filepath = r"/content/temp/"
 model_checkpoint_callback = ModelCheckpoint(
 	filepath=checkpoint_filepath,
 	save_weights_only=True,
@@ -65,8 +72,8 @@ model_checkpoint_callback = ModelCheckpoint(
 
 class BaseConfig(object):
 	SEED = 101
-	TRAIN_DF = r'F:\Pycharm_projects\Kaggle Cassava\data\train.csv'
-	TRAIN_IMG_PATH = r"F:/Pycharm_projects/Kaggle Cassava/data/train_images/"
+	TRAIN_DF = '/content/train.csv/'
+	TRAIN_IMG_PATH = '/content/train_images/'
 	TEST_IMG_PATH = '/content/test_images/'
 	CLASS_MAP = '/content/label_num_to_disease_map.json'
 
@@ -75,7 +82,7 @@ def albu_transforms_train(data_resize):
 	return A.Compose([
 		A.ToFloat(),
 		A.Resize(800, 800),
-		A.HorizontalFlip()
+
 	], p=1.)
 
 
@@ -219,61 +226,18 @@ class CassavaGenerator(tf.keras.utils.Sequence):
 			np.random.shuffle(self.indices)
 
 
-# Taylor cross entropy loss
-def taylor_cross_entropy_loss(y_pred, y_true, n=3, label_smoothing=0.0):
-	"""Taylor Cross Entropy Loss.
-	Args:
-	y_pred: A multi-dimensional probability tensor with last dimension `num_classes`.
-	y_true: A tensor with shape and dtype as y_pred.
-	n: An order of taylor expansion.
-	label_smoothing: A float in [0, 1] for label smoothing.
-	Returns:
-	A loss tensor.
-	"""
-	y_pred = tf.cast(y_pred, tf.float32)
-	y_true = tf.cast(y_true, tf.float32)
-
-	if label_smoothing > 0.0:
-		num_classes = tf.cast(tf.shape(y_true)[-1], tf.float32)
-		y_true = (1 - num_classes / (num_classes - 1) * label_smoothing) * y_true + label_smoothing / (num_classes - 1)
-
-	y_pred_n_order = tf.math.maximum(tf.stack([1 - y_pred] * n), 1e-7)  # avoide being too small value
-	numerator = tf.math.maximum(tf.math.cumprod(y_pred_n_order, axis=0), 1e-7)  # avoide being too small value
-	denominator = tf.expand_dims(tf.expand_dims(tf.range(1, n + 1, dtype="float32"), axis=1), axis=1)
-	y_pred_taylor = tf.math.maximum(tf.math.reduce_sum(tf.math.divide(numerator, denominator), axis=0),
-	                                1e-7)  # avoide being too small value
-	loss_values = tf.math.reduce_sum(y_true * y_pred_taylor, axis=1, keepdims=True)
-	return tf.math.reduce_sum(loss_values, -1)
-
-
-class TaylorCrossEntropyLoss(tf.keras.losses.Loss):
-	def __init__(self, n=3, label_smoothing=0.0):
-		super(TaylorCrossEntropyLoss, self).__init__()
-		self.n = n
-		self.label_smoothing = label_smoothing
-
-	def call(self, y_true, y_pred):
-		return taylor_cross_entropy_loss(y_pred, y_true, n=self.n, label_smoothing=self.label_smoothing)
-
-
-model.compile(
-	optimizer=opt,
-	loss=tf.keras.losses.CategoricalCrossentropy(),
-	metrics=['categorical_accuracy'])
-
-check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train, 8,
+check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train, 12,
                               (800, 800, 3), shuffle=True,
-                              transform=albu_transforms_train(800), use_cutmix=True, use_mixup=False)
+                              transform=albu_transforms_train(800), use_cutmix=True)
 
 plot_imgs(check_gens, row=4, col=3)
 history = model.fit(check_gens,
                     callbacks=[model_checkpoint_callback],
                     epochs=25, validation_data=datagen.flow_from_dataframe(dataframe=test,
-                                                                           directory=r"F:\Pycharm_projects\Kaggle Cassava\data\train_images",
-
+                                                                           directory=r"/content/train_images",
                                                                            x_col="image_id",
                                                                            y_col="label", target_size=(800, 600),
-                                                                           class_mode="categorical", batch_size=16,
+                                                                           class_mode="categorical", batch_size=12,
 
                                                                            shuffle=True))
 oof_accuracy.append(max(history.history["val_categorical_accuracy"]))
@@ -281,3 +245,4 @@ fold_number += 1
 if fold_number == n_splits:
 	print("Training finished!")
 model.load_weights(checkpoint_filepath)
+model.save(r"/content/models/" + str(fold_number), include_optimizer=False, overwrite=True)

@@ -13,7 +13,10 @@ from tensorflow.keras.callbacks import ModelCheckpoint
 from tensorflow.keras.layers import BatchNormalization
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from vit_keras import vit
+from tensorflow.keras.mixed_precision import experimental as mixed_precision
 
+policy = mixed_precision.Policy('mixed_float16')
+mixed_precision.set_policy(policy)
 physical_devices = tf.config.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
@@ -23,10 +26,10 @@ datagen = ImageDataGenerator(rescale=1. / 255, horizontal_flip=True)
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 image_size = 512
-base_model = vit.vit_b32(
+base_model = vit.vit_b16(
 	image_size=image_size,
-	activation="softmax",
-	pretrained=True,
+	activation=None,
+	pretrained=False,
 	include_top=True,
 	pretrained_top=False,
 	classes=5
@@ -84,7 +87,6 @@ def albu_transforms_train(data_resize):
 	return A.Compose([
 		A.ToFloat(),
 		A.Resize(800, 800),
-		A.HorizontalFlip()
 	], p=1.)
 
 

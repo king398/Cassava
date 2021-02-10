@@ -2,9 +2,10 @@ import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.mixed_precision import experimental as mixed_precision
 import pandas as pd
-from tensorflow.keras.layers import BatchNormalization
+from tensorflow.keras.layers import Flatten, Dense, LeakyReLU, BatchNormalization, Dropout, PReLU
 from tensorflow.keras.callbacks import ModelCheckpoint
 import efficientnet.keras as efn
+import tensorflow_addons as tfa
 import albumentations as A
 import numpy as np
 import cv2
@@ -13,10 +14,8 @@ import random
 from pylab import rcParams
 import os
 import math
-import sys
-
-sys.path.append('./bitemperedloss-tf')
-from tf_bi_tempered_loss import BiTemperedLogisticLoss
+from sklearn.model_selection import train_test_split
+import tensorflow_addons as tfa
 
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
@@ -46,7 +45,6 @@ model = tf.keras.Sequential([
 	tf.keras.layers.experimental.preprocessing.RandomCrop(height=512, width=512),
 
 	tf.keras.layers.Input((512, 512, 3)),
-
 	tf.keras.layers.BatchNormalization(renorm=True),
 	base_model,
 	BatchNormalization(),
@@ -57,7 +55,7 @@ model = tf.keras.Sequential([
 ])
 model.compile(
 	optimizer=opt,
-	loss=BiTemperedLogisticLoss(t1=0.4, t2=2.0),
+	loss=tf.losses.CategoricalCrossentropy(),
 	metrics=['categorical_accuracy'])
 
 checkpoint_filepath = r"/content/temp/"
@@ -81,8 +79,7 @@ def albu_transforms_train(data_resize):
 	return A.Compose([
 		A.ToFloat(),
 		A.Resize(800, 800),
-		A.HorizontalFlip(),
-		A.RandomBrightness(),
+		A.HorizontalFlip()
 
 	], p=1.)
 

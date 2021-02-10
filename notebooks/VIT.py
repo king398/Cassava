@@ -14,10 +14,13 @@ import math
 from vit_keras import vit, utils
 import itertools
 import sklearn.metrics
+from tensorflow.keras.mixed_precision import experimental as mixed_precision
 
-physical_devices = tf.config    .list_physical_devices('GPU')
+physical_devices = tf.config.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
+policy = mixed_precision.Policy('mixed_float16')
+mixed_precision.set_policy(policy)
 tf.keras.regularizers.l2(l2=0.01)
 
 datagen = ImageDataGenerator(rescale=1. / 255, horizontal_flip=True)
@@ -26,10 +29,10 @@ train_csv["label"] = train_csv["label"].astype(str)
 image_size = 512
 base_model = vit.vit_b32(
 	image_size=image_size,
-	activation="softmax",
-	pretrained=True,
+	activation=None,
+	pretrained=False,
 	include_top=True,
-	pretrained_top=True,
+	pretrained_top=False,
 	classes=5
 )
 
@@ -83,7 +86,6 @@ def albu_transforms_train(data_resize):
 	return A.Compose([
 		A.ToFloat(),
 		A.Resize(800, 800),
-		A.HorizontalFlip()
 	], p=1.)
 
 
@@ -250,7 +252,7 @@ class CassavaGenerator(tf.keras.utils.Sequence):
 # Define the per-epoch callback.
 
 
-check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train, 8,
+check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train, 12,
                               (800, 800, 3), shuffle=True,
                               transform=albu_transforms_train(800), use_cutmix=True)
 
