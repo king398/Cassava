@@ -4,17 +4,15 @@ import os
 import pandas as pd
 import numpy as np
 import keras.backend as K
-
-model1 = tf.keras.models.load_model(r"../input/models-gcs/88newlr", compile=False)
+model1 = tf.keras.models.load_model(r"../input/models-gcs/8834cutmix", compile=False)
 model2 = tf.keras.models.load_model(r"../input/models-gcs/91effnetb3skfcv", compile=False)
-model3 = tf.keras.models.load_model(r"../input/models-gcs/8929momentum", compile=False)
+model3 = tf.keras.models.load_model(r"../input/models-gcs/88effnetb3noisyincludetopTrue", compile=False)
 model4 = tf.keras.models.load_model(r"../input/models-gcs/8850cutflip", compile=False)
 model5 = tf.keras.models.load_model(r"../input/models-gcs/89cutmix", compile=False)
 model6 = tf.keras.models.load_model(r"../input/models-gcs/8886retraincutmix", compile=False)
 model7 = tf.keras.models.load_model(r"../input/models-gcs/88newlr", compile=False)
 
-
-path = "../input/cassava-leaf-disease-classification/test_images"
+path = "../input/cassava-leaf-disease-classification/train_images"
 test_file_list = os.listdir(path)
 
 predictions = []
@@ -45,8 +43,9 @@ for filename in tqdm(test_file_list):
 
 		predictions.append(max(set(pre), key=pre.count))
 		K.clear_session()
-		del img, arr, img2, arr2
+	del img, arr, img2, arr2
 df = pd.DataFrame(zip(test_file_list, predictions), columns=["image_id", "label"])
 df.to_csv("./submission.csv", index=False)
 print(df)
+
 
