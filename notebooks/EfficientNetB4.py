@@ -39,7 +39,7 @@ oof_accuracy = []
 
 first_decay_steps = 500
 lr = (tf.keras.experimental.CosineDecayRestarts(0.04, first_decay_steps))
-opt = tf.keras.optimizers.SGD(lr)
+opt = tf.keras.optimizers.SGD(lr, momentum=0.9)
 
 model = tf.keras.Sequential([
 	tf.keras.layers.experimental.preprocessing.RandomCrop(height=512, width=512),
@@ -55,7 +55,7 @@ model = tf.keras.Sequential([
 ])
 model.compile(
 	optimizer=opt,
-	loss=tf.losses.CategoricalCrossentropy(),
+	loss=tf.keras.losses.CategoricalCrossentropy(),
 	metrics=['categorical_accuracy'])
 
 checkpoint_filepath = r"/content/temp/"
@@ -80,7 +80,6 @@ def albu_transforms_train(data_resize):
 		A.ToFloat(),
 		A.Resize(800, 800),
 		A.HorizontalFlip()
-
 	], p=1.)
 
 
