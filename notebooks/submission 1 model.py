@@ -3,13 +3,12 @@ from tqdm import tqdm
 import os
 import pandas as pd
 import numpy as np
-import gc
 import keras.backend as K
 
 model1 = tf.keras.models.load_model(r"../input/models-gcs/vit", compile=False)
 
 
-path = "../input/cassava-leaf-disease-classification/train_images"
+path = "../input/cassava-leaf-disease-classification/test_images"
 test_file_list = os.listdir(path)
 
 predictions = []
@@ -35,7 +34,7 @@ for filename in tqdm(test_file_list):
 
 		predictions.append(max(set(pre), key=pre.count))
 		K.clear_session()
-		del img, arr
+	del img, arr
 df = pd.DataFrame(zip(test_file_list, predictions), columns=["image_id", "label"])
 df.to_csv("./submission.csv", index=False)
 print(df)

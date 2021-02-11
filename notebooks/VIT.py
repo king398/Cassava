@@ -24,15 +24,15 @@ mixed_precision.set_policy(policy)
 tf.keras.regularizers.l2(l2=0.01)
 
 datagen = ImageDataGenerator(rescale=1. / 255, horizontal_flip=True)
-train_csv = pd.read_csv(r"F:\Pycharm_projects\Kaggle Cassava\data\train.csv")
+train_csv = pd.read_csv(r"F:\Pycharm_projects\Kaggle Cassava\data\more images\merged.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 image_size = 512
 base_model = vit.vit_b32(
 	image_size=image_size,
-	activation=None,
-	pretrained=False,
+	activation="softmax",
+	pretrained=True,
 	include_top=True,
-	pretrained_top=False,
+	pretrained_top=True,
 	classes=5
 )
 
@@ -48,7 +48,7 @@ oof_accuracy = []
 batch_size = 17
 first_decay_steps = 500
 lr = (tf.keras.experimental.CosineDecayRestarts(0.04, first_decay_steps))
-opt = tf.keras.optimizers.SGD(lr)
+opt = tf.keras.optimizers.SGD(lr, momentum=0.9)
 
 model = tf.keras.Sequential([
 	tf.keras.layers.experimental.preprocessing.RandomCrop(height=512, width=512),
@@ -78,8 +78,8 @@ model_checkpoint_callback = ModelCheckpoint(
 
 class BaseConfig(object):
 	SEED = 101
-	TRAIN_DF = r'F:\Pycharm_projects\Kaggle Cassava\data\train.csv'
-	TRAIN_IMG_PATH = r"F:/Pycharm_projects/Kaggle Cassava/data/train_images/"
+	TRAIN_DF = r'F:\Pycharm_projects\Kaggle Cassava\data\more images\merged.csv'
+	TRAIN_IMG_PATH = r"F:/Pycharm_projects/Kaggle Cassava/data/more images/train/"
 
 
 def albu_transforms_train(data_resize):
@@ -252,7 +252,7 @@ class CassavaGenerator(tf.keras.utils.Sequence):
 # Define the per-epoch callback.
 
 
-check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train, 12,
+check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train, 16,
                               (800, 800, 3), shuffle=True,
                               transform=albu_transforms_train(800), use_cutmix=True)
 
@@ -261,7 +261,7 @@ valid_steps = 4280 / 20
 history = model.fit(check_gens,
                     callbacks=[model_checkpoint_callback],
                     epochs=15, validation_data=datagen.flow_from_dataframe(dataframe=test,
-                                                                           directory=r"F:\Pycharm_projects\Kaggle Cassava\data\train_images",
+                                                                           directory=BaseConfig.TRAIN_IMG_PATH,
                                                                            x_col="image_id",
                                                                            y_col="label", target_size=(800, 600),
                                                                            class_mode="categorical",
