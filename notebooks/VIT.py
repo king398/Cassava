@@ -30,7 +30,7 @@ image_size = 512
 base_model = vit.vit_b32(
 	image_size=image_size,
 	activation="softmax",
-	pretrained=True,
+	pretrained=Tr,
 	include_top=True,
 	pretrained_top=True,
 	classes=5
@@ -48,13 +48,15 @@ oof_accuracy = []
 batch_size = 17
 first_decay_steps = 500
 lr = (tf.keras.experimental.CosineDecayRestarts(0.04, first_decay_steps))
-opt = tf.keras.optimizers.SGD(lr, momentum=0.9)
+opt = tf.keras.optimizers.SGD(lr)
 
 model = tf.keras.Sequential([
 	tf.keras.layers.experimental.preprocessing.RandomCrop(height=512, width=512),
 
 	tf.keras.layers.Input((512, 512, 3)),
 	tf.keras.layers.BatchNormalization(),
+	tf.keras.layers.LeakyReLU(),
+
 	base_model,
 	BatchNormalization(),
 	tf.keras.layers.LeakyReLU(),
@@ -252,7 +254,7 @@ class CassavaGenerator(tf.keras.utils.Sequence):
 # Define the per-epoch callback.
 
 
-check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train, 16,
+check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train,16,
                               (800, 800, 3), shuffle=True,
                               transform=albu_transforms_train(800), use_cutmix=True)
 

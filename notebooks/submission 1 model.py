@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 import keras.backend as K
 
-model1 = tf.keras.models.load_model(r"../input/models-gcs/vit", compile=False)
+model1 = tf.keras.models.load_model(r"../input/models-gcs/8883spilt9", compile=False)
 
 
 path = "../input/cassava-leaf-disease-classification/test_images"
@@ -23,7 +23,6 @@ for filename in tqdm(test_file_list):
 	for i in range(tta):
 		img = tf.keras.preprocessing.image.load_img(path + "/" + filename, target_size=(800, 600))
 		arr = np.array(img, dtype=np.float32)
-		arr = tf.image.random_flip_left_right(arr)
 		arr = tf.expand_dims(arr / 255., 0)
 
 		arr = tf.convert_to_tensor(arr)

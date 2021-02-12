@@ -49,7 +49,6 @@ model = tf.keras.Sequential([
 	tf.keras.layers.BatchNormalization(renorm=True),
 	base_model,
 	BatchNormalization(),
-	tf.keras.layers.LeakyReLU(),
 	tf.keras.layers.Flatten(),
 
 	tf.keras.layers.Dense(5, activation='softmax', dtype='float32')
