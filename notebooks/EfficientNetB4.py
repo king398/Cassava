@@ -25,10 +25,11 @@ datagen = ImageDataGenerator(rescale=1. / 255, horizontal_flip=True)
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 
-base_model = efn.EfficientNetB4(weights='noisy-student', input_shape=(512, 512, 3), include_top=True)
+base_model = efn.EfficientNetB4(weights='noisy-student', input_shape=(512, 512, 3), include_top=True,
+                                drop_connect_rate=0.6)
 
-train = train_csv.iloc[:int(len(train_csv) * 0.8), :]
-test = train_csv.iloc[int(len(train_csv) * 0.8):, :]
+train = train_csv.iloc[:int(len(train_csv) * 0.9), :]
+test = train_csv.iloc[int(len(train_csv) * 0.9):, :]
 print((len(train), len(test)))
 base_model.trainable = True
 

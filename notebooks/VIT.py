@@ -24,7 +24,7 @@ mixed_precision.set_policy(policy)
 tf.keras.regularizers.l2(l2=0.01)
 
 datagen = ImageDataGenerator(rescale=1. / 255, horizontal_flip=True)
-train_csv = pd.read_csv(r"F:\Pycharm_projects\Kaggle Cassava\data\more images\merged.csv")
+train_csv = pd.read_csv(r"F:\Pycharm_projects\Kaggle Cassava\data\train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 image_size = 512
 base_model = vit.vit_b32(
@@ -78,8 +78,8 @@ model_checkpoint_callback = ModelCheckpoint(
 
 class BaseConfig(object):
 	SEED = 101
-	TRAIN_DF = r'F:\Pycharm_projects\Kaggle Cassava\data\more images\merged.csv'
-	TRAIN_IMG_PATH = r"F:/Pycharm_projects/Kaggle Cassava/data/more images/train/"
+	TRAIN_DF = r'F:\Pycharm_projects\Kaggle Cassava\data\train.csv'
+	TRAIN_IMG_PATH = r"F:/Pycharm_projects/Kaggle Cassava/data/train_images/"
 
 
 def albu_transforms_train(data_resize):
@@ -225,9 +225,9 @@ class CassavaGenerator(tf.keras.utils.Sequence):
 
 		for i, k in enumerate(idx):
 			# load the image file using cv2
-			image = cv2.imread(self.img_path + self.data['image_id'][k])
-
-			image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+			image = tf.io.read_file(self.img_path + self.data['image_id'][k])
+			image = tf.io.decode_image(image)
+			image = np.array(image, dtype="float32")
 
 			res = self.augment(image=image)
 			image = res['image']
