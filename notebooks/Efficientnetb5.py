@@ -245,3 +245,4 @@ if fold_number == n_splits:
 model.load_weights(checkpoint_filepath)
 
 model.save(r"/content/models/" + str(fold_number), include_optimizer=False, overwrite=True)
+mdoel

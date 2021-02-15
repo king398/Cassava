@@ -14,8 +14,7 @@ import random
 from pylab import rcParams
 import os
 import math
-from sklearn.model_selection import train_test_split
-import tensorflow_addons as tfa
+
 
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
