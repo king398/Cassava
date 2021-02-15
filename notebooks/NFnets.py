@@ -1,38 +1,30 @@
-import math
-import os
-import random
-
+import tensorflow as tf
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.mixed_precision import experimental as mixed_precision
+import pandas as pd
+from tensorflow.keras.layers import Flatten, Dense, LeakyReLU, BatchNormalization, Dropout, PReLU
+from tensorflow.keras.callbacks import ModelCheckpoint
+import tensorflow_addons as tfa
 import albumentations as A
+import numpy as np
 import cv2
 import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
-import tensorflow as tf
+import random
 from pylab import rcParams
-from tensorflow.keras.callbacks import ModelCheckpoint
-from tensorflow.keras.layers import BatchNormalization
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from vit_keras import vit
-from tensorflow.keras.mixed_precision import experimental as mixed_precision
+import os
+import math
+
+from nfnets_keras import NFNetF5
 
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
-
-
 tf.keras.regularizers.l2(l2=0.01)
 
 datagen = ImageDataGenerator(rescale=1. / 255, horizontal_flip=True)
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
-image_size = 512
-base_model = vit.vit_b32(
-	image_size=image_size,
-	activation="softmax",
-	pretrained=True,
-	include_top=True,
-	pretrained_top=True,
-	classes=5
-)
+
+base_model = NFNetF5(include_top=True, num_classes=5)
 
 train = train_csv.iloc[:int(len(train_csv) * 0.9), :]
 test = train_csv.iloc[int(len(train_csv) * 0.9):, :]
@@ -53,9 +45,10 @@ model = tf.keras.Sequential([
 
 	tf.keras.layers.Input((512, 512, 3)),
 	tf.keras.layers.BatchNormalization(renorm=True),
-
 	base_model,
+
 	BatchNormalization(),
+
 	tf.keras.layers.Flatten(),
 
 	tf.keras.layers.Dense(5, activation='softmax', dtype='float32')
@@ -76,8 +69,8 @@ model_checkpoint_callback = ModelCheckpoint(
 
 class BaseConfig(object):
 	SEED = 101
-	TRAIN_DF = r"/content/train.csv"
-	TRAIN_IMG_PATH = r'/content/train_images/'
+	TRAIN_DF = '/content/train.csv/'
+	TRAIN_IMG_PATH = '/content/train_images/'
 	TEST_IMG_PATH = '/content/test_images/'
 	CLASS_MAP = '/content/label_num_to_disease_map.json'
 
@@ -103,7 +96,7 @@ def CutMix(image, label, DIM, PROBABILITY=0.8):
 	# output - a batch of images with cutmix applied
 	CLASSES = 5
 
-	imgs = []
+	imgs = [];
 	labs = []
 	for j in range(len(image)):
 		# DO CUTMIX WITH PROBABILITY DEFINED ABOVE
@@ -139,7 +132,7 @@ def CutMix(image, label, DIM, PROBABILITY=0.8):
 	# RESHAPE HACK SO TPU COMPILER KNOWS SHAPE OF OUTPUT TENSOR (maybe use Python typing instead?)
 	image2 = tf.reshape(tf.stack(imgs), (len(image), DIM, DIM, 3))
 	label2 = tf.reshape(tf.stack(labs), (len(image), CLASSES))
-	label2 = tf.cast(label2, dtype=tf.float16)
+
 	return image2, label2
 
 
@@ -230,17 +223,17 @@ class CassavaGenerator(tf.keras.utils.Sequence):
 			np.random.shuffle(self.indices)
 
 
-check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train, 32,
+check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train, 8,
                               (800, 800, 3), shuffle=True,
                               transform=albu_transforms_train(800), use_cutmix=True)
 
 history = model.fit(check_gens,
                     callbacks=[model_checkpoint_callback],
-                    epochs=15, validation_data=datagen.flow_from_dataframe(dataframe=test,
+                    epochs=25, validation_data=datagen.flow_from_dataframe(dataframe=test,
                                                                            directory=r"/content/train_images",
                                                                            x_col="image_id",
                                                                            y_col="label", target_size=(800, 600),
-                                                                           class_mode="categorical", batch_size=16,
+                                                                           class_mode="categorical", batch_size=12,
 
                                                                            shuffle=True))
 oof_accuracy.append(max(history.history["val_categorical_accuracy"]))
