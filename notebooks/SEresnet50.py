@@ -23,7 +23,7 @@ datagen = ImageDataGenerator(rescale=1. / 255, horizontal_flip=True)
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 
-base_model = tf2cv_get_model("seresnext50_32x4d", pretrained=False, data_format="channels_last")
+base_model = tf2cv_get_model("seresnext101_32x4d", pretrained=False, data_format="channels_last")
 
 train = train_csv.iloc[:int(len(train_csv) * 0.8), :]
 test = train_csv.iloc[int(len(train_csv) * 0.8):, :]

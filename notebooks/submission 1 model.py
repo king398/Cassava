@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 import keras.backend as K
 
-model1 = tf.keras.models.load_model(r"../input/models-gcs/8883spilt9", compile=False)
+model1 = tf.keras.models.load_model(r"", compile=False)
 
 
 path = "../input/cassava-leaf-disease-classification/test_images"
@@ -16,7 +16,6 @@ tta_pred = []
 model1_predict_list = []
 tta = 1
 for filename in tqdm(test_file_list):
-	print(filename)
 
 	tta_pred = []
 
@@ -27,8 +26,6 @@ for filename in tqdm(test_file_list):
 
 		arr = tf.convert_to_tensor(arr)
 		model1_predict = np.argmax(model1.predict_on_batch(arr))
-
-
 		pre = [model1_predict]
 
 		predictions.append(max(set(pre), key=pre.count))

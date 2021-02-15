@@ -25,10 +25,11 @@ datagen = ImageDataGenerator(rescale=1. / 255, horizontal_flip=True)
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 
-base_model = efn.EfficientNetB5(weights='noisy-student', input_shape=(512, 512, 3), include_top=True)
+base_model = efn.EfficientNetB5(weights='noisy-student', input_shape=(512, 512, 3), include_top=True
+                                )
 
-train = train_csv.iloc[:int(len(train_csv) * 0.8), :]
-test = train_csv.iloc[int(len(train_csv) * 0.8):, :]
+train = train_csv.iloc[:int(len(train_csv) * 0.9), :]
+test = train_csv.iloc[int(len(train_csv) * 0.9):, :]
 print((len(train), len(test)))
 base_model.trainable = True
 
@@ -37,9 +38,9 @@ fold_number = 0
 n_splits = 5
 oof_accuracy = []
 
-first_decay_steps = 400
+first_decay_steps = 500
 lr = (tf.keras.experimental.CosineDecayRestarts(0.04, first_decay_steps))
-opt = tf.keras.optimizers.SGD(lr)
+opt = tf.keras.optimizers.SGD(lr, momentum=0.9)
 
 model = tf.keras.Sequential([
 	tf.keras.layers.experimental.preprocessing.RandomCrop(height=512, width=512),
@@ -47,8 +48,9 @@ model = tf.keras.Sequential([
 	tf.keras.layers.Input((512, 512, 3)),
 	tf.keras.layers.BatchNormalization(renorm=True),
 	base_model,
+
 	BatchNormalization(),
-	tf.keras.layers.LeakyReLU(),
+
 	tf.keras.layers.Flatten(),
 
 	tf.keras.layers.Dense(5, activation='softmax', dtype='float32')
@@ -80,7 +82,6 @@ def albu_transforms_train(data_resize):
 		A.ToFloat(),
 		A.Resize(800, 800),
 		A.HorizontalFlip()
-		
 	], p=1.)
 
 
@@ -92,7 +93,7 @@ def albu_transforms_valid(data_resize):
 	], p=1.)
 
 
-def CutMix(image, label, DIM, PROBABILITY=0.8):
+def CutMix(image, label, DIM, PROBABILITY=0.6):
 	# input image - is a batch of images of size [n,dim,dim,3] not a single image of [dim,dim,3]
 	# output - a batch of images with cutmix applied
 	CLASSES = 5
@@ -224,11 +225,10 @@ class CassavaGenerator(tf.keras.utils.Sequence):
 			np.random.shuffle(self.indices)
 
 
-check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train, 12,
+check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train, 8,
                               (800, 800, 3), shuffle=True,
                               transform=albu_transforms_train(800), use_cutmix=True)
 
-plot_imgs(check_gens, row=4, col=3)
 history = model.fit(check_gens,
                     callbacks=[model_checkpoint_callback],
                     epochs=25, validation_data=datagen.flow_from_dataframe(dataframe=test,

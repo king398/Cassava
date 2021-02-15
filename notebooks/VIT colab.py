@@ -28,15 +28,15 @@ train_csv["label"] = train_csv["label"].astype(str)
 image_size = 512
 base_model = vit.vit_b16(
 	image_size=image_size,
-	activation=None,
-	pretrained=False,
+	activation="softmax",
+	pretrained=True,
 	include_top=True,
-	pretrained_top=False,
+	pretrained_top=True,
 	classes=5
 )
 
-train = train_csv.iloc[:int(len(train_csv) * 0.8), :]
-test = train_csv.iloc[int(len(train_csv) * 0.8):, :]
+train = train_csv.iloc[:int(len(train_csv) * 0.9), :]
+test = train_csv.iloc[int(len(train_csv) * 0.9):, :]
 print((len(train), len(test)))
 base_model.trainable = True
 
@@ -54,6 +54,8 @@ model = tf.keras.Sequential([
 
 	tf.keras.layers.Input((512, 512, 3)),
 	tf.keras.layers.BatchNormalization(renorm=True),
+	tf.keras.layers.LeakyReLU(),
+
 	base_model,
 	BatchNormalization(),
 	tf.keras.layers.LeakyReLU(),
@@ -87,6 +89,7 @@ def albu_transforms_train(data_resize):
 	return A.Compose([
 		A.ToFloat(),
 		A.Resize(800, 800),
+		A.HorizontalFlip()
 	], p=1.)
 
 
@@ -230,7 +233,7 @@ class CassavaGenerator(tf.keras.utils.Sequence):
 			np.random.shuffle(self.indices)
 
 
-check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train, 24,
+check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train, 12,
                               (800, 800, 3), shuffle=True,
                               transform=albu_transforms_train(800), use_cutmix=True)
 

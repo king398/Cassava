@@ -15,6 +15,8 @@ from vit_keras import vit, utils
 import itertools
 import sklearn.metrics
 from tensorflow.keras.mixed_precision import experimental as mixed_precision
+from keras import applications
+
 
 physical_devices = tf.config.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
@@ -27,14 +29,7 @@ datagen = ImageDataGenerator(rescale=1. / 255, horizontal_flip=True)
 train_csv = pd.read_csv(r"F:\Pycharm_projects\Kaggle Cassava\data\train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 image_size = 512
-base_model = vit.vit_b32(
-	image_size=image_size,
-	activation="softmax",
-	pretrained=Tr,
-	include_top=True,
-	pretrained_top=True,
-	classes=5
-)
+base_model = applications.resnext.ResNeXt50(include_top=False, weights=None)
 
 train = train_csv.iloc[:int(len(train_csv) * 0.8), :]
 test = train_csv.iloc[int(len(train_csv) * 0.8):, :]
