@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 import keras.backend as K
 
-model1 = tf.keras.models.load_model(r"", compile=False)
+model1 = tf.keras.models.load_model(r"../input/models-gcs/8925b5cutmix", compile=False)
 
 
 path = "../input/cassava-leaf-disease-classification/test_images"
