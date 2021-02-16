@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 import keras.backend as K
 
-model1 = tf.keras.models.load_model(r"../input/models-gcs/8883spilt9", compile=False)
+model1 = tf.keras.models.load_model(r"../input/models-gcs/8925b5cutmix", compile=False)
 print("model1_loaded")
 model2 = tf.keras.models.load_model(r"../input/models-gcs/91effnetb3skfcv", compile=False)
 print("model2_loaded")
@@ -25,8 +25,6 @@ print("model6_loaded")
 model7 = tf.keras.models.load_model(r"../input/models-gcs/88newlr", compile=False)
 print("model7_loaded")
 
-
-print("model9_loaded")
 
 path = "../input/cassava-leaf-disease-classification/test_images"
 test_file_list = os.listdir(path)
