@@ -25,13 +25,13 @@ print("model6_loaded")
 model7 = tf.keras.models.load_model(r"../input/models-gcs/88newlr", compile=False)
 print("model7_loaded")
 
-path = "../input/cassava-leaf-disease-classification/test_images"
+path = "../input/cassava-leaf-disease-classification/train_images"
 test_file_list = os.listdir(path)
 
 predictions = []
 tta_pred = []
 model1_predict_list = []
-tta = 5
+tta = 1
 for filename in tqdm(test_file_list):
 	img = tf.keras.preprocessing.image.load_img(path + "/" + filename, target_size=(800, 600))
 	arr = np.array(img, dtype=np.float32)
@@ -42,7 +42,6 @@ for filename in tqdm(test_file_list):
 
 	arr = tf.convert_to_tensor(arr)
 	arr2 = tf.convert_to_tensor(arr2)
-	tta_pred = []
 
 	for i in range(tta):
 		model1_predict = model1.predict_on_batch(arr)
@@ -52,8 +51,7 @@ for filename in tqdm(test_file_list):
 		model5_predict = model5.predict_on_batch(arr)
 		model6_predict = model6.predict_on_batch(arr)
 		model7_predict = model7.predict_on_batch(arr)
-		tta_pred.append(model1_predict + model2_predict + model3_predict + model4_predict + model5_predict + model6_predict + model7_predict)
-
+		tta_pred = model1_predict + model2_predict + model3_predict + model4_predict + model5_predict + model6_predict + model7_predict
 	print(tta_pred)
 	tta_pred = np.argmax(tta_pred)
 

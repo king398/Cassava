@@ -7,7 +7,6 @@ import keras.backend as K
 
 model1 = tf.keras.models.load_model(r"../input/models-gcs/8925b5cutmix", compile=False)
 
-
 path = "../input/cassava-leaf-disease-classification/test_images"
 test_file_list = os.listdir(path)
 
@@ -19,8 +18,8 @@ for filename in tqdm(test_file_list):
 
 	tta_pred = []
 
-	for i in rang   e(tta):
-		img = tf.keras.preprocessing.image.load_img(path + "/" + filename, target_size=(800, 600))
+	for i in range(tta):
+		img = tf.keras.preprocessing.image.load_img(path + "/" + filename, target_size=(512, 512))
 		arr = np.array(img, dtype=np.float32)
 		arr = tf.expand_dims(arr / 255., 0)
 
