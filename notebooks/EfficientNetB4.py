@@ -5,7 +5,6 @@ import pandas as pd
 from tensorflow.keras.layers import Flatten, Dense, LeakyReLU, BatchNormalization, Dropout, PReLU
 from tensorflow.keras.callbacks import ModelCheckpoint
 import efficientnet.keras as efn
-import tensorflow_addons as tfa
 import albumentations as A
 import numpy as np
 import cv2
