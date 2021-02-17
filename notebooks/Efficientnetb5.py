@@ -138,8 +138,6 @@ def CutMix(image, label, DIM, PROBABILITY=0.8):
 	return image2, label2
 
 
-
-
 def plot_imgs(dataset_show, row, col):
 	rcParams['figure.figsize'] = 20, 10
 	for i in range(row):
