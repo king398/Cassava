@@ -19,7 +19,7 @@ for filename in tqdm(test_file_list):
 
 	tta_pred = []
 
-	for i in range(tta):
+	for i in rang   e(tta):
 		img = tf.keras.preprocessing.image.load_img(path + "/" + filename, target_size=(800, 600))
 		arr = np.array(img, dtype=np.float32)
 		arr = tf.expand_dims(arr / 255., 0)

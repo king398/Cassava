@@ -16,6 +16,7 @@ import itertools
 import sklearn.metrics
 from tensorflow.keras.mixed_precision import experimental as mixed_precision
 from keras import applications
+import tensorflow_addons as tfa
 
 
 physical_devices = tf.config.list_physical_devices('GPU')
@@ -29,7 +30,14 @@ datagen = ImageDataGenerator(rescale=1. / 255, horizontal_flip=True)
 train_csv = pd.read_csv(r"F:\Pycharm_projects\Kaggle Cassava\data\train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 image_size = 512
-base_model = applications.resnext.ResNeXt50(include_top=False, weights=None)
+base_model = vit.vit_b32(
+	image_size=image_size,
+	activation="softmax",
+	pretrained=True,
+	include_top=True,
+	pretrained_top=True,
+	classes=5
+)
 
 train = train_csv.iloc[:int(len(train_csv) * 0.8), :]
 test = train_csv.iloc[int(len(train_csv) * 0.8):, :]
@@ -44,6 +52,7 @@ batch_size = 17
 first_decay_steps = 500
 lr = (tf.keras.experimental.CosineDecayRestarts(0.04, first_decay_steps))
 opt = tf.keras.optimizers.SGD(lr)
+tqdm_callback = tfa.callbacks.TQDMProgressBar()
 
 model = tf.keras.Sequential([
 	tf.keras.layers.experimental.preprocessing.RandomCrop(height=512, width=512),
@@ -256,7 +265,7 @@ check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train,16,
 steps = 17119 / 1
 valid_steps = 4280 / 20
 history = model.fit(check_gens,
-                    callbacks=[model_checkpoint_callback],
+                    callbacks=[model_checkpoint_callback,tqdm_callback],
                     epochs=15, validation_data=datagen.flow_from_dataframe(dataframe=test,
                                                                            directory=BaseConfig.TRAIN_IMG_PATH,
                                                                            x_col="image_id",

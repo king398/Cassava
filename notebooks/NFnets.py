@@ -4,6 +4,7 @@ from tensorflow.keras.mixed_precision import experimental as mixed_precision
 import pandas as pd
 from tensorflow.keras.layers import Flatten, Dense, LeakyReLU, BatchNormalization, Dropout, PReLU
 from tensorflow.keras.callbacks import ModelCheckpoint
+import efficientnet.keras as efn
 import tensorflow_addons as tfa
 import albumentations as A
 import numpy as np
@@ -13,8 +14,9 @@ import random
 from pylab import rcParams
 import os
 import math
-
-from nfnets_keras import NFNetF5
+from sklearn.model_selection import train_test_split
+import tensorflow_addons as tfa
+from nfnets_keras import NFNetF3
 
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
@@ -24,7 +26,7 @@ datagen = ImageDataGenerator(rescale=1. / 255, horizontal_flip=True)
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 
-base_model = NFNetF5(include_top=True, num_classes=5)
+base_model =NFNetF3(include_top = True, num_classes = 5)
 
 train = train_csv.iloc[:int(len(train_csv) * 0.9), :]
 test = train_csv.iloc[int(len(train_csv) * 0.9):, :]
@@ -41,7 +43,6 @@ lr = (tf.keras.experimental.CosineDecayRestarts(0.04, first_decay_steps))
 opt = tf.keras.optimizers.SGD(lr, momentum=0.9)
 
 model = tf.keras.Sequential([
-	tf.keras.layers.experimental.preprocessing.RandomCrop(height=512, width=512),
 
 	tf.keras.layers.Input((512, 512, 3)),
 	tf.keras.layers.BatchNormalization(renorm=True),
@@ -78,7 +79,7 @@ class BaseConfig(object):
 def albu_transforms_train(data_resize):
 	return A.Compose([
 		A.ToFloat(),
-		A.Resize(800, 800),
+		A.Resize(512, 512),
 		A.HorizontalFlip()
 	], p=1.)
 
@@ -123,6 +124,7 @@ def CutMix(image, label, DIM, PROBABILITY=0.8):
 		three = image[j, ya:yb, xb:DIM, :]
 		middle = tf.concat([one, two, three], axis=1)
 		img = tf.concat([image[j, 0:ya, :, :], middle, image[j, yb:DIM, :, :]], axis=0)
+
 		imgs.append(img)
 
 		# MAKE CUTMIX LABEL
@@ -224,15 +226,16 @@ class CassavaGenerator(tf.keras.utils.Sequence):
 
 
 check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train, 8,
-                              (800, 800, 3), shuffle=True,
-                              transform=albu_transforms_train(800), use_cutmix=True)
+                              (512, 512, 3), shuffle=True,
+                              transform=albu_transforms_train(512), use_cutmix=True)
+plot_imgs(check_gens, row=4, col=3)
 
 history = model.fit(check_gens,
                     callbacks=[model_checkpoint_callback],
                     epochs=25, validation_data=datagen.flow_from_dataframe(dataframe=test,
                                                                            directory=r"/content/train_images",
                                                                            x_col="image_id",
-                                                                           y_col="label", target_size=(800, 600),
+                                                                           y_col="label", target_size=(512, 600),
                                                                            class_mode="categorical", batch_size=12,
 
                                                                            shuffle=True))
