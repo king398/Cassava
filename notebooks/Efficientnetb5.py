@@ -1,7 +1,6 @@
 import math
 import os
 import random
-
 import albumentations as A
 import cv2
 import efficientnet.keras as efn
@@ -18,14 +17,14 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_policy(policy)
+
 tf.keras.regularizers.l2(l2=0.01)
 
 datagen = ImageDataGenerator(rescale=1. / 255, horizontal_flip=True)
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 
-base_model = efn.EfficientNetB5(weights='noisy-student', input_shape=(512, 512, 3), include_top=True
-                                )
+base_model = efn.EfficientNetL2(weights='noisy-student', input_shape=(512, 512, 3), include_top=True)
 tqdm_callback = tfa.callbacks.TQDMProgressBar()
 
 train = train_csv.iloc[:int(len(train_csv) * 0.9), :]
@@ -43,8 +42,9 @@ lr = tf.keras.experimental.CosineDecayRestarts(0.04, first_decay_steps)
 opt = tf.keras.optimizers.SGD(lr, momentum=0.9)
 
 model = tf.keras.Sequential([
+	tf.keras.layers.experimental.preprocessing.RandomCrop(512, 512),
 
-	tf.keras.layers.Input((512, 512, 3)),
+	tf.keras.layers.Input((800, 800, 3)),
 	tf.keras.layers.BatchNormalization(renorm=True),
 	base_model,
 
@@ -79,7 +79,7 @@ class BaseConfig(object):
 def albu_transforms_train(data_resize):
 	return A.Compose([
 		A.ToFloat(),
-		A.Resize(512, 512),
+		A.Resize(800, 800),
 		A.HorizontalFlip()
 	], p=1.)
 
@@ -226,16 +226,16 @@ class CassavaGenerator(tf.keras.utils.Sequence):
 
 
 check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train, 8,
-                              (512, 512, 3), shuffle=True,
-                              transform=albu_transforms_train(512), use_cutmix=True, use_mixup=False)
+                              (800, 800, 3), shuffle=True,
+                              transform=albu_transforms_train(800), use_cutmix=True, use_mixup=False)
 plot_imgs(check_gens, row=4, col=3)
 
 history = model.fit(check_gens,
                     callbacks=[model_checkpoint_callback, tqdm_callback],
-                    epochs=25, validation_data=datagen.flow_from_dataframe(dataframe=test,
+                    epochs=20, validation_data=datagen.flow_from_dataframe(dataframe=test,
                                                                            directory=r"/content/train_images",
                                                                            x_col="image_id",
-                                                                           y_col="label", target_size=(512, 600),
+                                                                           y_col="label", target_size=(800, 800),
                                                                            class_mode="categorical", batch_size=12,
 
                                                                            shuffle=True))
