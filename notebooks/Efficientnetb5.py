@@ -8,7 +8,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-import tensorflow_addons as tfa
 from pylab import rcParams
 from tensorflow.keras.callbacks import ModelCheckpoint
 from tensorflow.keras.layers import BatchNormalization
@@ -20,12 +19,11 @@ mixed_precision.set_policy(policy)
 
 tf.keras.regularizers.l2(l2=0.01)
 
-datagen = ImageDataGenerator(rescale=1. / 255, horizontal_flip=True)
+datagen = ImageDataGenerator(rescale=1. / 255, horizontal_flip=True, dtype=tf.float32)
 train_csv = pd.read_csv(r"/content/train.csv")
 train_csv["label"] = train_csv["label"].astype(str)
 
-base_model = efn.EfficientNetL2(weights='noisy-student', input_shape=(512, 512, 3), include_top=True)
-tqdm_callback = tfa.callbacks.TQDMProgressBar()
+base_model = efn.EfficientNetB5(weights='noisy-student', input_shape=(512, 512, 3), include_top=True)
 
 train = train_csv.iloc[:int(len(train_csv) * 0.9), :]
 test = train_csv.iloc[int(len(train_csv) * 0.9):, :]
@@ -37,19 +35,17 @@ fold_number = 0
 n_splits = 5
 oof_accuracy = []
 
-first_decay_steps = 500
-lr = tf.keras.experimental.CosineDecayRestarts(0.04, first_decay_steps)
+first_decay_steps = 400
+lr = tf.keras.experimental.NoisyLinearCosineDecay(0.04, first_decay_steps)
 opt = tf.keras.optimizers.SGD(lr, momentum=0.9)
 
 model = tf.keras.Sequential([
 	tf.keras.layers.experimental.preprocessing.RandomCrop(512, 512),
 
-	tf.keras.layers.Input((800, 800, 3)),
-	tf.keras.layers.BatchNormalization(renorm=True),
+	tf.keras.layers.Input((512, 512, 3)),
+	BatchNormalization(renorm=True),
 	base_model,
-
 	BatchNormalization(),
-
 	tf.keras.layers.Flatten(),
 
 	tf.keras.layers.Dense(5, activation='softmax', dtype='float32')
@@ -231,11 +227,11 @@ check_gens = CassavaGenerator(BaseConfig.TRAIN_IMG_PATH, train, 8,
 plot_imgs(check_gens, row=4, col=3)
 
 history = model.fit(check_gens,
-                    callbacks=[model_checkpoint_callback, tqdm_callback],
+                    callbacks=[model_checkpoint_callback],
                     epochs=20, validation_data=datagen.flow_from_dataframe(dataframe=test,
                                                                            directory=r"/content/train_images",
                                                                            x_col="image_id",
-                                                                           y_col="label", target_size=(800, 800),
+                                                                           y_col="label", target_size=(800, 600),
                                                                            class_mode="categorical", batch_size=12,
 
                                                                            shuffle=True))
